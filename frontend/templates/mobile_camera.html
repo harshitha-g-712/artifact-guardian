@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Artifact Guardian — Mobile Capture</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b1120;color:#e2e8f0;font-family:Arial,sans-serif;min-height:100vh;padding:16px}
+.header{text-align:center;padding:20px 0 16px;border-bottom:1px solid #1f2d3d;margin-bottom:20px}
+.header h1{font-size:20px;color:#d4a017;letter-spacing:1px}
+.header p{font-size:12px;color:#64748b;margin-top:4px}
+.camera-wrap{position:relative;border-radius:14px;overflow:hidden;background:#000;margin-bottom:16px;aspect-ratio:4/3}
+video{width:100%;height:100%;object-fit:cover;display:block}
+.camera-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#64748b;font-size:14px}
+label{display:block;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-weight:700}
+select,input{width:100%;background:#111827;border:1px solid #1f2d3d;color:#e2e8f0;padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:14px;appearance:none}
+.btn{width:100%;padding:16px;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;margin-bottom:10px}
+.btn-start{background:linear-gradient(135deg,#1e3a5f,#2d5a9e);color:#fff}
+.btn-capture{background:linear-gradient(135deg,#d4a017,#f59e0b);color:#000}
+.btn-capture:disabled{opacity:.4;cursor:not-allowed}
+.btn-stop{background:rgba(220,38,38,.2);color:#f87171;border:1px solid rgba(220,38,38,.3)}
+.result-card{background:#111827;border:1px solid #1f2d3d;border-radius:14px;padding:16px;margin-top:16px;display:none}
+.result-card h3{font-size:14px;font-weight:700;margin-bottom:12px;color:#d4a017}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.metric{background:#0f172a;border:1px solid #1f2d3d;border-radius:10px;padding:12px;text-align:center}
+.metric-val{font-size:22px;font-weight:700}
+.metric-lbl{font-size:10px;color:#64748b;text-transform:uppercase;margin-top:3px}
+.report-box{background:#0f172a;border:1px solid #1f2d3d;border-radius:10px;padding:12px;font-size:11px;font-family:monospace;white-space:pre-wrap;color:#94a3b8;max-height:200px;overflow-y:auto;margin-top:10px}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase}
+.badge-critical{background:rgba(220,38,38,.2);color:#f87171}
+.badge-high{background:rgba(234,88,12,.2);color:#fb923c}
+.badge-medium{background:rgba(217,119,6,.2);color:#fbbf24}
+.badge-low{background:rgba(22,163,74,.2);color:#4ade80}
+.preview-img{width:100%;border-radius:10px;margin-bottom:10px;max-height:200px;object-fit:cover}
+.spinner{width:20px;height:20px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status{font-size:13px;color:#64748b;text-align:center;padding:8px;min-height:32px}
+.crack-yes{color:#f87171;font-weight:700}
+.crack-no{color:#4ade80;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🛡️ ARTIFACT GUARDIAN</h1>
+  <p>Mobile Capture & Analysis</p>
+</div>
+
+<div class="camera-wrap" id="cameraWrap">
+  <video id="video" autoplay playsinline muted></video>
+  <div class="camera-msg" id="cameraMsg">
+    <span style="font-size:40px">📷</span>
+    <p>Tap Start Camera</p>
+  </div>
+</div>
+
+<div class="status" id="statusMsg">Ready — select artifact and start camera</div>
+
+<label>Artifact</label>
+<select id="artifactSel">
+  <option value="">Loading artifacts…</option>
+</select>
+
+<label>Inspection Type</label>
+<select id="inspType">
+  <option>Routine</option>
+  <option>Pre-Shipment</option>
+  <option>Post-Shipment</option>
+  <option>Emergency</option>
+</select>
+
+<button class="btn btn-start" id="startBtn" onclick="startCamera()">
+  📷 Start Camera
+</button>
+<button class="btn btn-capture" id="captureBtn" onclick="captureAndAnalyze()" disabled>
+  🔍 Capture & Analyze
+</button>
+<button class="btn btn-stop" id="stopBtn" onclick="stopCamera()" style="display:none">
+  ⏹ Stop Camera
+</button>
+
+<canvas id="canvas" style="display:none"></canvas>
+
+<div class="result-card" id="resultCard">
+  <h3>✅ Analysis Result</h3>
+  <img id="capturePreview" class="preview-img" src="" alt="capture"/>
+  <div class="metrics" id="metricsGrid"></div>
+  <div class="report-box" id="reportBox"></div>
+</div>
+
+<script>
+const BASE = window.location.origin;
+let stream = null;
+
+async function loadArtifacts() {
+  try {
+    const r = await fetch(BASE + '/api/artifacts', {credentials:'include'});
+    if (!r.ok) { document.getElementById('artifactSel').innerHTML='<option value="">Login required — open main app first</option>'; return; }
+    const arts = await r.json();
+    const sel  = document.getElementById('artifactSel');
+    sel.innerHTML = '<option value="">— Select artifact —</option>' +
+      arts.map(a => `<option value="${a.artifact_id}">${a.name} (${a.category})</option>`).join('');
+  } catch(e) {
+    document.getElementById('artifactSel').innerHTML='<option value="">Could not load artifacts</option>';
+  }
+}
+
+async function startCamera() {
+  // Check camera API exists
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setStatus('❌ Camera not supported in this browser. Use Chrome or Safari.');
+    return;
+  }
+
+  setStatus('Starting camera…');
+
+  // Try rear camera first, then front, then any
+  const constraints = [
+    { video: { facingMode: { exact: 'environment' } } },
+    { video: { facingMode: 'environment' } },
+    { video: true }
+  ];
+
+  let lastError = null;
+  for (const c of constraints) {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(c);
+      break;
+    } catch(e) {
+      lastError = e;
+      stream = null;
+    }
+  }
+
+  if (!stream) {
+    if (lastError && lastError.name === 'NotAllowedError') {
+      setStatus('❌ Camera permission denied. Tap the camera icon in your browser address bar and allow access.');
+    } else if (lastError && lastError.name === 'NotFoundError') {
+      setStatus('❌ No camera found on this device.');
+    } else {
+      setStatus('❌ Camera error: ' + (lastError ? lastError.message : 'Unknown'));
+    }
+    return;
+  }
+
+  const video = document.getElementById('video');
+  video.srcObject = stream;
+  try { await video.play(); } catch(_) {}
+
+  document.getElementById('cameraMsg').style.display = 'none';
+  document.getElementById('captureBtn').disabled = false;
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('stopBtn').style.display = 'flex';
+  setStatus('Camera ready — point at artifact and capture');
+}
+
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  document.getElementById('video').srcObject = null;
+  document.getElementById('cameraMsg').style.display = 'flex';
+  document.getElementById('captureBtn').disabled = true;
+  document.getElementById('startBtn').style.display = 'flex';
+  document.getElementById('stopBtn').style.display = 'none';
+  setStatus('Camera stopped');
+}
+
+async function captureAndAnalyze() {
+  const aid   = document.getElementById('artifactSel').value;
+  const itype = document.getElementById('inspType').value;
+  if (!aid) { setStatus('⚠️ Please select an artifact first'); return; }
+
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  const previewSrc = canvas.toDataURL('image/jpeg', 0.9);
+  document.getElementById('capturePreview').src = previewSrc;
+
+  const btn = document.getElementById('captureBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analyzing…';
+  setStatus('Uploading and analyzing…');
+
+  canvas.toBlob(async blob => {
+    const fd = new FormData();
+    fd.append('image', blob, 'mobile_capture.jpg');
+    fd.append('artifact_id', aid);
+    fd.append('inspection_type', itype);
+    try {
+      const r = await fetch(BASE + '/api/analyze', {
+        method:'POST', body:fd, credentials:'include'
+      });
+      const d = await r.json();
+      if (!r.ok) { setStatus('❌ Error: ' + (d.error||'Analysis failed')); return; }
+      showResult(d);
+      setStatus('✅ Analysis complete!');
+    } catch(e) {
+      setStatus('❌ Network error — check connection');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🔍 Capture & Analyze';
+    }
+  }, 'image/jpeg', 0.9);
+}
+
+function showResult(d) {
+  const risk = sevToRisk(d.severity_index);
+  const colors = {CRITICAL:'#f87171',HIGH:'#fb923c',MEDIUM:'#fbbf24',LOW:'#4ade80'};
+  const color  = colors[risk] || '#94a3b8';
+
+  document.getElementById('metricsGrid').innerHTML = `
+    <div class="metric">
+      <div class="metric-val" style="color:${color}">${parseFloat(d.severity_index||0).toFixed(1)}</div>
+      <div class="metric-lbl">Severity /10</div>
+    </div>
+    <div class="metric">
+      <div class="metric-val">${(parseFloat(d.fading_level||0)*100).toFixed(0)}%</div>
+      <div class="metric-lbl">Fading Level</div>
+    </div>
+    <div class="metric">
+      <div class="metric-val ${d.crack_detected?'crack-yes':'crack-no'}">${d.crack_detected?'YES':'NO'}</div>
+      <div class="metric-lbl">Cracks</div>
+    </div>
+    <div class="metric">
+      <div class="metric-val"><span class="badge badge-${risk.toLowerCase()}">${risk}</span></div>
+      <div class="metric-lbl">Risk Level</div>
+    </div>`;
+
+  document.getElementById('reportBox').textContent = d.ai_report || 'No report generated';
+  document.getElementById('resultCard').style.display = 'block';
+  document.getElementById('resultCard').scrollIntoView({behavior:'smooth'});
+}
+
+function sevToRisk(sev) {
+  const s = parseFloat(sev||0);
+  if(s>=8) return 'CRITICAL'; if(s>=6) return 'HIGH'; if(s>=3.5) return 'MEDIUM'; return 'LOW';
+}
+
+function setStatus(msg) {
+  document.getElementById('statusMsg').textContent = msg;
+}
+
+loadArtifacts();
+</script>
+</body>
+</html>

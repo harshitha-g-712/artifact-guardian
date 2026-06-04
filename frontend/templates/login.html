@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Artifact Guardian — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#090e1a;
+  --card:#101828;
+  --border:#1c2e44;
+  --border-l:#253d58;
+  --text:#eaf0f8;
+  --text2:#8fa3be;
+  --muted:#4a6480;
+  --accent:#c9951a;
+  --accent-l:#e8af2a;
+  --primary:#1a3352;
+  --primary-l:#254d7a;
+  --red:#e03535;
+}
+
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;position:relative;
+}
+
+/* Background layers */
+.bg-layer{position:fixed;inset:0;pointer-events:none;z-index:0}
+
+/* Grid texture */
+.bg-grid{
+  position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size:48px 48px;
+  pointer-events:none;z-index:0;
+}
+
+/* Glowing orbs */
+.orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none}
+.orb-1{width:600px;height:600px;
+  background:radial-gradient(circle,rgba(26,51,82,.45),transparent 70%);
+  top:-200px;left:-150px;z-index:0}
+.orb-2{width:500px;height:500px;
+  background:radial-gradient(circle,rgba(201,149,26,.1),transparent 70%);
+  bottom:-150px;right:-100px;z-index:0}
+.orb-3{width:300px;height:300px;
+  background:radial-gradient(circle,rgba(37,77,122,.2),transparent 70%);
+  top:50%;right:20%;z-index:0}
+
+/* Floating particles */
+@keyframes rise{
+  0%{transform:translateY(0) scale(1);opacity:0}
+  10%{opacity:.7}
+  90%{opacity:.2}
+  100%{transform:translateY(-100vh) scale(.5);opacity:0}
+}
+.particle{position:fixed;border-radius:50%;pointer-events:none;z-index:0}
+
+/* Scanline overlay */
+.scanlines{
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(
+    0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px
+  );
+  pointer-events:none;z-index:0;
+}
+
+/* ── Main layout ── */
+.login-wrap{
+  position:relative;z-index:1;
+  width:100%;max-width:460px;
+  padding:24px;
+}
+
+/* Corner decorations */
+.login-wrap::before,.login-wrap::after{
+  content:'';position:absolute;
+  width:20px;height:20px;border-color:var(--accent);border-style:solid;
+  opacity:.5;pointer-events:none;
+}
+.login-wrap::before{top:8px;left:8px;border-width:2px 0 0 2px}
+.login-wrap::after{bottom:8px;right:8px;border-width:0 2px 2px 0}
+
+.login-card{
+  background:rgba(16,24,40,.9);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:48px 44px;
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  box-shadow:0 32px 80px rgba(0,0,0,.7),
+             inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* Gold top accent */
+.login-card::before{
+  content:'';display:block;height:2px;
+  background:linear-gradient(90deg, transparent, var(--accent) 30%, var(--accent-l) 50%, var(--accent) 70%, transparent);
+  margin:-48px -44px 48px;border-radius:20px 20px 0 0;
+}
+
+/* ── Brand ── */
+.brand{text-align:center;margin-bottom:40px}
+.shield-wrap{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:72px;height:72px;border-radius:20px;
+  background:linear-gradient(135deg,var(--primary),var(--primary-l));
+  border:1px solid rgba(201,149,26,.3);
+  box-shadow:0 0 40px rgba(201,149,26,.2),0 8px 32px rgba(0,0,0,.5);
+  margin-bottom:20px;
+}
+.shield-wrap i{font-size:34px;color:var(--accent)}
+.brand h1{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:700;
+  color:var(--text);letter-spacing:3px;
+  text-transform:uppercase;margin-bottom:6px;
+}
+.brand p{color:var(--muted);font-size:12px;letter-spacing:.8px}
+
+/* ── Form ── */
+.form-group{margin-bottom:20px}
+.form-group label{
+  display:block;font-size:10px;
+  text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--text2);font-weight:600;margin-bottom:8px;
+}
+.input-wrap{position:relative}
+.input-icon{
+  position:absolute;left:14px;top:50%;transform:translateY(-50%);
+  color:var(--muted);font-size:15px;transition:color .2s;
+}
+.input-wrap:focus-within .input-icon{color:var(--accent)}
+.input-wrap input{
+  width:100%;
+  background:rgba(9,14,26,.7);
+  border:1px solid var(--border);
+  color:var(--text);
+  padding:13px 14px 13px 44px;
+  border-radius:10px;font-size:14px;
+  transition:all .22s;font-family:'DM Sans',sans-serif;
+}
+.input-wrap input:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(201,149,26,.12);
+  background:rgba(9,14,26,.9);
+}
+.input-wrap input::placeholder{color:var(--muted)}
+
+.btn-login{
+  width:100%;
+  background:linear-gradient(135deg,var(--primary),var(--primary-l));
+  color:#fff;border:1px solid rgba(255,255,255,.08);
+  padding:14px;border-radius:10px;
+  font-size:14px;font-weight:600;
+  cursor:pointer;letter-spacing:.3px;
+  transition:all .22s;margin-top:10px;
+  font-family:'DM Sans',sans-serif;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  position:relative;overflow:hidden;
+}
+.btn-login::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);
+  opacity:0;transition:opacity .22s;
+}
+.btn-login:hover::before{opacity:1}
+.btn-login:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 28px rgba(26,51,82,.6);
+}
+.btn-login:disabled{opacity:.55;cursor:not-allowed;transform:none}
+
+/* ── Error ── */
+.error-box{
+  background:rgba(224,53,53,.1);
+  border:1px solid rgba(224,53,53,.25);
+  color:#f87171;
+  padding:12px 16px;border-radius:10px;
+  font-size:13px;margin-bottom:20px;
+  display:none;align-items:center;gap:9px;
+}
+
+/* ── Divider ── */
+.divider{
+  display:flex;align-items:center;gap:12px;
+  margin:24px 0 16px;color:var(--muted);font-size:11px;
+  letter-spacing:1px;text-transform:uppercase;
+}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── Demo accounts ── */
+.demo-box{
+  background:rgba(255,255,255,.02);
+  border:1px solid var(--border);
+  border-radius:10px;padding:14px;text-align:center;
+}
+.demo-box p{font-size:11px;color:var(--muted);margin-bottom:10px}
+.demo-accounts{display:flex;gap:8px;justify-content:center}
+.demo-btn{
+  background:rgba(201,149,26,.08);
+  border:1px solid rgba(201,149,26,.2);
+  color:var(--accent);
+  padding:6px 16px;border-radius:7px;
+  font-size:11px;font-weight:600;cursor:pointer;
+  transition:all .2s;letter-spacing:.5px;
+  font-family:'DM Sans',sans-serif;
+}
+.demo-btn:hover{background:rgba(201,149,26,.18);border-color:var(--accent)}
+
+/* ── Footer ── */
+.login-footer{
+  text-align:center;margin-top:24px;
+  font-size:11px;color:var(--muted);
+}
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+<div class="scanlines"></div>
+<div id="particleContainer"></div>
+
+<div class="login-wrap">
+  <div class="login-card">
+
+    <div class="brand">
+      <div class="shield-wrap">
+        <i class="bi bi-shield-check"></i>
+      </div>
+      <h1>Artifact Guardian</h1>
+      <p>AI Heritage Preservation System</p>
+    </div>
+
+    <div class="error-box" id="errBox">
+      <i class="bi bi-exclamation-circle"></i>
+      <span id="errMsg">Invalid credentials</span>
+    </div>
+
+    <div class="form-group">
+      <label>Username</label>
+      <div class="input-wrap">
+        <i class="bi bi-person input-icon"></i>
+        <input type="text" id="username" placeholder="Enter your username" autocomplete="username"/>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Password</label>
+      <div class="input-wrap">
+        <i class="bi bi-lock input-icon"></i>
+        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password"/>
+      </div>
+    </div>
+
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">
+      <i class="bi bi-box-arrow-in-right"></i> Sign In
+    </button>
+
+    <div class="divider">Demo Accounts</div>
+
+    <div class="demo-box">
+      <p>Click to auto-fill credentials</p>
+      <div class="demo-accounts">
+        <button class="demo-btn" onclick="fillDemo('admin','admin123')">Admin</button>
+        <button class="demo-btn" onclick="fillDemo('curator','curator123')">Curator</button>
+        <button class="demo-btn" onclick="fillDemo('analyst','analyst123')">Analyst</button>
+      </div>
+    </div>
+
+    <div class="login-footer">
+      Secured · AI-Powered · Heritage Protection
+    </div>
+
+  </div>
+</div>
+
+<script>
+function fillDemo(u,p){
+  document.getElementById('username').value=u;
+  document.getElementById('password').value=p;
+  document.getElementById('errBox').style.display='none';
+}
+
+async function doLogin(){
+  const btn=document.getElementById('loginBtn');
+  const u=document.getElementById('username').value.trim();
+  const p=document.getElementById('password').value;
+  if(!u||!p){showErr('Please enter username and password.');return;}
+  btn.disabled=true;
+  btn.innerHTML='<span style="width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin .7s linear infinite"></span> Signing in…';
+  document.getElementById('errBox').style.display='none';
+  try{
+    const r=await fetch('/api/auth/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:u,password:p}),
+      credentials:'include'
+    });
+    const d=await r.json();
+    if(r.ok){window.location.href='/';}
+    else showErr(d.error||'Login failed. Please try again.');
+  }catch(e){showErr('Connection error. Is the server running?');}
+  finally{
+    btn.disabled=false;
+    btn.innerHTML='<i class="bi bi-box-arrow-in-right"></i> Sign In';
+  }
+}
+
+function showErr(msg){
+  const b=document.getElementById('errBox');
+  document.getElementById('errMsg').textContent=msg;
+  b.style.display='flex';
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+// Particles
+(function(){
+  const c=document.getElementById('particleContainer');
+  for(let i=0;i<25;i++){
+    const p=document.createElement('div');
+    p.className='particle';
+    const sz=Math.random()*4+1;
+    const hue=Math.random()>.7?'rgba(201,149,26,':'rgba(37,99,235,';
+    p.style.cssText=`
+      width:${sz}px;height:${sz}px;
+      left:${Math.random()*100}%;
+      bottom:-10px;
+      background:${hue}${Math.random()*.5+.2});
+      animation:rise ${Math.random()*20+12}s linear infinite;
+      animation-delay:${Math.random()*15}s;
+    `;
+    c.appendChild(p);
+  }
+})();
+</script>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</body>
+</html>

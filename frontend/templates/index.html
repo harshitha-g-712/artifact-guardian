@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Artifact Guardian — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+<link href="/static/css/style.css" rel="stylesheet"/>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ══════════════════════════════════════════════════ -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <i class="bi bi-shield-check"></i>
+    <div><span class="brand-main">ARTIFACT</span><span class="brand-sub">GUARDIAN</span></div>
+  </div>
+  <div class="sidebar-user" id="sidebarUser">
+    <div class="user-avatar" id="userAvatar">A</div>
+    <div>
+  <div class="user-name" id="userName">Loading…</div>
+  <div class="user-role" id="userRole">—</div>
+  <span id="roleBadge" class="role-badge"></span>
+</div>
+
+  </div>
+  <ul class="sidebar-nav">
+  <li class="nav-label">MAIN</li>
+  <li><a href="#" class="nav-link active" data-section="dashboard" data-min-role="viewer"><i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span></a></li>
+  <li><a href="#" class="nav-link" data-section="analyze" data-min-role="curator"><i class="bi bi-cpu-fill"></i><span>AI Analyze</span></a></li>
+  <li><a href="#" class="nav-link" data-section="compare" data-min-role="curator"><i class="bi bi-layout-split"></i><span>Compare</span></a></li>
+  <li><a href="#" class="nav-link" data-section="video" data-min-role="curator"><i class="bi bi-camera-video-fill"></i><span>Video / Camera</span></a></li>
+  <li><a href="#" class="nav-link" data-min-role="curator" onclick="openQrScanner(); return false;"><i class="bi bi-qr-code-scan"></i><span>QR Scanner</span></a></li>
+  <li class="nav-label">RECORDS</li>
+  <li><a href="#" class="nav-link" data-section="artifacts" data-min-role="viewer"><i class="bi bi-archive-fill"></i><span>Artifacts</span></a></li>
+  <li><a href="#" class="nav-link" data-section="inspections" data-min-role="viewer"><i class="bi bi-clipboard2-pulse-fill"></i><span>Inspections</span></a></li>
+  <li><a href="#" class="nav-link" data-section="gallery" data-min-role="viewer"><i class="bi bi-images"></i><span>Gallery</span></a></li>
+  <li><a href="#" class="nav-link" data-section="shipments" data-min-role="curator"><i class="bi bi-truck"></i><span>Shipments</span></a></li>
+  <li class="nav-label">ANALYTICS</li>
+  <li><a href="#" class="nav-link" data-section="trends" data-min-role="viewer"><i class="bi bi-graph-up-arrow"></i><span>Trends</span></a></li>
+  <li><a href="#" class="nav-link" data-section="heatmap" data-min-role="viewer"><i class="bi bi-grid-3x3-gap-fill"></i><span>Risk Heatmap</span></a></li>
+  <li><a href="#" class="nav-link" data-section="alerts" data-min-role="viewer"><i class="bi bi-bell-fill"></i><span>Alerts</span><span class="nav-badge" id="alertBadge">0</span></a></li>
+  <li><a href="#" class="nav-link" data-section="reports" data-min-role="curator"><i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span></a></li>
+  <li class="nav-label admin-only">ADMIN</li>
+  <li class="admin-only"><a href="#" class="nav-link" data-section="users" data-min-role="admin"><i class="bi bi-people-fill"></i><span>Users</span></a></li>
+  <li class="admin-only"><a href="#" class="nav-link" data-section="import" data-min-role="admin"><i class="bi bi-upload"></i><span>Import / Export</span></a></li>
+  <li class="admin-only"><a href="#" class="nav-link" data-section="audit" data-min-role="admin"><i class="bi bi-journal-text"></i><span>Audit Log</span></a></li>
+</ul>
+
+  <div class="sidebar-footer">
+    <button class="btn-logout" onclick="logout()"><i class="bi bi-box-arrow-left"></i> Logout</button>
+  </div>
+</nav>
+
+<!-- ═══ MAIN ═════════════════════════════════════════════════════ -->
+<div class="main-content" id="mainContent">
+  
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <h1 class="page-title" id="pageTitle">Dashboard</h1>
+    <div class="topbar-right">
+      <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input type="text" id="globalSearch" placeholder="Search inspections…" oninput="globalSearchHandler(this.value)"/>
+      </div>
+      <button class="icon-btn" onclick="toggleTheme()" title="Toggle Theme" id="themeBtn"><i class="bi bi-moon-fill"></i></button>
+      <button class="icon-btn pos-rel" onclick="showSection('alerts')" title="Alerts">
+        <i class="bi bi-bell-fill"></i>
+        <span class="topbar-badge" id="topbarBadge" style="display:none">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── DASHBOARD ──────────────────────────────────────────── -->
+  <section class="content-section active" id="section-dashboard">
+    <div class="stat-grid">
+      <div class="stat-card" style="--c:#3b82f6">
+        <div class="stat-icon"><i class="bi bi-archive"></i></div>
+        <div><div class="stat-val" id="s-artifacts">—</div><div class="stat-lbl">Total Artifacts</div></div>
+      </div>
+      <div class="stat-card" style="--c:#f59e0b">
+        <div class="stat-icon"><i class="bi bi-search"></i></div>
+        <div><div class="stat-val" id="s-inspections">—</div><div class="stat-lbl">Inspections</div></div>
+      </div>
+      <div class="stat-card" style="--c:#ef4444">
+        <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
+        <div><div class="stat-val" id="s-alerts">—</div><div class="stat-lbl">Active Alerts</div></div>
+      </div>
+      <div class="stat-card" style="--c:#8b5cf6">
+        <div class="stat-icon"><i class="bi bi-speedometer2"></i></div>
+        <div><div class="stat-val" id="s-severity">—</div><div class="stat-lbl">Avg Severity</div></div>
+      </div>
+    </div>
+    <div class="row g-4 mb-4">
+      <div class="col-lg-7"><div class="chart-card"><div class="chart-hdr">Severity by Artifact <button class="refresh-btn" onclick="loadDashboard()"><i class="bi bi-arrow-clockwise"></i></button></div><canvas id="barChart" height="220"></canvas></div></div>
+      <div class="col-lg-5"><div class="chart-card"><div class="chart-hdr">Condition Distribution</div><canvas id="donutChart" height="220"></canvas></div></div>
+    </div>
+    <div class="chart-card mb-4"><div class="chart-hdr">Monthly Inspections (This Year)</div><canvas id="monthlyChart" height="120"></canvas></div>
+    <div class="table-card">
+      <div class="table-card-hdr"><span>Recent Inspections</span><button class="btn-sm-outline" onclick="showSection('inspections')">View All</button></div>
+      <div class="table-scroll"><table class="dtable" id="recentTable">
+        <thead><tr><th>Artifact</th><th>Date</th><th>Type</th><th>Crack</th><th>Fading</th><th>Severity</th><th>Risk</th></tr></thead>
+        <tbody id="recentTbody"><tr><td colspan="7" class="td-loading">Loading…</td></tr></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ── ANALYZE ─────────────────────────────────────────────── -->
+  <!-- File input OUTSIDE the drop zone — fixes browser click bug -->
+  <input type="file" id="imgInput" accept="image/*" hidden/>
+
+  <section class="content-section" id="section-analyze">
+    <div class="two-col-grid">
+      <div class="panel">
+        <h2 class="panel-title"><i class="bi bi-cpu-fill"></i> AI Damage Analysis</h2>
+        <p class="panel-sub">Upload an artifact image for crack detection, fading analysis, heatmap and severity scoring.</p>
+        <div class="fgroup"><label>Artifact</label><select id="analyzeArtifact" class="fselect"><option value="">— Select artifact —</option></select></div>
+        <div class="fgroup"><label>Inspection Type</label>
+          <select id="inspectionType" class="fselect"><option>Routine</option><option>Pre-Shipment</option><option>Post-Shipment</option><option>Emergency</option></select>
+        </div>
+
+        <!-- Drop zone — no input inside, click handled by JS -->
+        <div class="drop-zone" id="analyzeDropZone">
+          <i class="bi bi-cloud-arrow-up"></i>
+          <p>Click or drop image here</p>
+          <small>PNG · JPG · WEBP · up to 50 MB</small>
+        </div>
+
+        <!-- Preview -->
+        <div id="imgPrevWrap" class="img-prev-wrap d-none" style="position:relative;margin-top:12px">
+          <img id="imgPrev" src="" alt="preview" style="width:100%;border-radius:10px;max-height:260px;object-fit:cover"/>
+          <button onclick="clearImg()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+        <div id="analyzeFileName" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center"></div>
+
+        <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()" disabled data-permission="can_analyze">
+  <i class="bi bi-cpu"></i> Run AI Analysis
+</button>
+
+        
+        <div id="analyzeLoader" class="analyze-loader d-none">
+          <div class="spinner"></div><p>AI is analyzing image…</p>
+        </div>
+      </div>
+      <div class="panel" id="analyzeResultPanel">
+        <div class="result-placeholder"><i class="bi bi-robot"></i><p>Results will appear here after analysis</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── COMPARE ─────────────────────────────────────────────── -->
+  <!-- Hidden file inputs OUTSIDE drop zones — avoids browser click-propagation bugs -->
+  <input type="file" id="beforeInput" accept="image/*" hidden/>
+  <input type="file" id="afterInput"  accept="image/*" hidden/>
+
+  <section class="content-section" id="section-compare">
+    <h2 class="section-title"><i class="bi bi-layout-split"></i> Before / After Comparison</h2>
+    <p class="section-sub">Upload two images of the same artifact to measure deterioration and generate a pixel-difference heatmap.</p>
+
+    <div class="compare-grid">
+      <!-- BEFORE -->
+      <div class="panel">
+        <div class="compare-label"><i class="bi bi-clock-history"></i> BEFORE IMAGE</div>
+        <div class="drop-zone compare-drop" id="beforeZone">
+          <i class="bi bi-image"></i>
+          <p>Click or drop image here</p>
+          <small>PNG · JPG · WEBP</small>
+        </div>
+        <div id="beforePrevWrap" class="d-none" style="position:relative;margin-top:10px">
+          <img id="beforePrev" class="compare-img" src="" alt="before"/>
+          <button onclick="clearCompare('before')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="compare-filename" id="beforeName" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center"></div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="panel">
+        <div class="compare-label"><i class="bi bi-calendar-check"></i> AFTER IMAGE</div>
+        <div class="drop-zone compare-drop" id="afterZone">
+          <i class="bi bi-image"></i>
+          <p>Click or drop image here</p>
+          <small>PNG · JPG · WEBP</small>
+        </div>
+        <div id="afterPrevWrap" class="d-none" style="position:relative;margin-top:10px">
+          <img id="afterPrev" class="compare-img" src="" alt="after"/>
+          <button onclick="clearCompare('after')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="compare-filename" id="afterName" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center"></div>
+      </div>
+
+      <!-- DIFF MAP -->
+      <div class="panel">
+        <div class="compare-label"><i class="bi bi-activity"></i> DIFFERENCE MAP</div>
+        <div id="diffWrap" class="diff-empty"><i class="bi bi-activity"></i><p>Run comparison first</p></div>
+      </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-3 align-items-center flex-wrap">
+      <button class="btn-primary" id="compareBtn" onclick="runCompare()">
+        <i class="bi bi-arrow-left-right"></i> Compare Images
+      </button>
+      <div id="compareLoader" class="d-none" style="display:flex;align-items:center;gap:8px;color:#64748b;font-size:13px">
+        <div class="spinner-sm"></div> Comparing…
+      </div>
+      <div id="compareStatus" style="font-size:13px;color:#64748b"></div>
+    </div>
+
+    <div id="compareResultPanel" class="panel mt-4 d-none"></div>
+  </section>
+
+  <!-- ── VIDEO / CAMERA ──────────────────────────────────────── -->
+  <section class="content-section" id="section-video">
+    <h2 class="section-title"><i class="bi bi-camera-video-fill"></i> Video & Camera Inspection</h2>
+    <div class="vtabs">
+      <button class="vtab active" onclick="switchVTab('upload',this)"><i class="bi bi-film"></i> Upload Video</button>
+      <button class="vtab" onclick="switchVTab('camera',this)"><i class="bi bi-camera-fill"></i> Live Camera</button>
+    </div>
+
+    <!-- Upload video tab -->
+    <div id="vtab-upload" class="vtab-pane">
+      <div class="two-col-grid mt-3">
+        <div class="panel">
+          <div class="fgroup"><label>Artifact</label><select id="videoArtifact" class="fselect"><option value="">— Select artifact —</option></select></div>
+          <div class="fgroup">
+            <label>Expected Objects <small style="color:#64748b">(comma-separated — will alert if missing)</small></label>
+            <input type="text" class="finput" id="expectedObjects" placeholder="e.g. vase, scroll, helmet, coin"/>
+          </div>
+          <div class="drop-zone" id="videoDropZone">
+  <i class="bi bi-film"></i><p>Drop video or <span>browse</span></p>
+  <small>MP4 · AVI · MOV · MKV · up to 50 MB</small>
+  <input type="file" id="videoInput" accept="video/*" hidden/>
+</div>
+          <video id="videoPrev" class="video-prev d-none" controls></video>
+          <button class="btn-analyze mt-3" id="videoBtn" onclick="runVideoAnalysis()" disabled>
+            <i class="bi bi-search"></i> Detect Missing Objects
+          </button>
+          <div id="videoLoader" class="analyze-loader d-none"><div class="spinner"></div><p>Analyzing video frames…</p></div>
+        </div>
+        <div class="panel" id="videoResultPanel"><div class="result-placeholder"><i class="bi bi-film"></i><p>Video analysis results will appear here</p></div></div>
+      </div>
+    </div>
+
+    <!-- Live camera tab -->
+    <div id="vtab-camera" class="vtab-pane d-none">
+      <div class="panel mt-3">
+        <div class="d-flex gap-3 align-items-center flex-wrap mb-3">
+          <select id="cameraSourceType" class="fselect" style="max-width:200px" onchange="onCameraSourceChange(this.value)">
+  <option value="">— Select Camera Source —</option>
+  <option value="mobile">Mobile Camera</option>
+  <option value="laptop">Laptop / Desktop Camera</option>
+</select>
+
+<select id="facingMode" class="fselect d-none" style="max-width:160px">
+  <option value="environment">Rear Camera</option>
+  <option value="user">Front Camera</option>
+</select>
+
+<select id="cameraSelect" class="fselect d-none" style="max-width:260px"></select>
+
+<button class="btn-primary" id="startCamBtn" onclick="startCamera()" disabled data-permission="can_camera">
+  <i class="bi bi-camera-fill"></i> Start
+</button>
+
+<button class="btn-danger" id="stopCamBtn" onclick="stopCamera()" disabled>
+  <i class="bi bi-stop-fill"></i> Stop
+</button>
+<button class="btn-success" id="captureBtn" onclick="captureFrame()" disabled data-permission="can_camera">
+  <i class="bi bi-camera"></i> Capture & Analyze
+</button>
+
+<button id="enrollFpBtn" onclick="enrollFingerprint()" disabled data-permission="can_camera"
+  title="Enroll master DNA fingerprint for this artifact"
+  style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
+    border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+    background:rgba(217,119,6,.12);border:1px solid rgba(217,119,6,.4);
+    color:#fbbf24;transition:all .2s">
+  <i class="bi bi-fingerprint"></i> Enroll DNA
+</button>
+
+<button id="verifyFpBtn" onclick="verifyFingerprint()" disabled data-permission="can_camera"
+  title="Verify artifact against master DNA fingerprint"
+  style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
+    border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+    background:rgba(29,78,216,.12);border:1px solid rgba(29,78,216,.4);
+    color:#60a5fa;transition:all .2s">
+  <i class="bi bi-shield-check"></i> Verify DNA
+</button>
+
+
+        </div>
+        <div class="camera-wrap">
+          <video id="cameraFeed" autoplay muted playsinline class="camera-feed"></video>
+          <canvas id="cameraCanvas" class="d-none"></canvas>
+          <div id="cameraStatus" class="camera-status">Camera not started</div>
+        </div>
+        <div id="mobileQRBox" style="display:none; margin-top:20px; text-align:center;">
+
+    <h4>Scan QR Code Using Mobile</h4>
+
+    <canvas id="mobileQR"></canvas>
+
+    <p id="mobileLink"></p>
+
+</div>
+        <div class="row g-3 mt-3">
+          <div class="col-md-6"><label class="flabel">Artifact for Capture</label><select id="cameraArtifact" class="fselect"><option value="">— Select —</option></select></div>
+          <div class="col-md-6"><label class="flabel">Inspection Type</label>
+            <select id="cameraInspType" class="fselect"><option>Pre-Shipment</option><option>Post-Shipment</option><option>Routine</option></select>
+          </div>
+        </div>
+        <div id="captureResult" class="mt-3"></div>
+        <div id="fpHistoryPanel" style="margin-top:16px;display:none">
+  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+    color:var(--muted);margin-bottom:8px">
+    <i class="bi bi-clock-history"></i> Verification History
+  </div>
+  <div id="fpHistoryList"></div>
+</div>
+
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ARTIFACTS ───────────────────────────────────────────── -->
+  <section class="content-section" id="section-artifacts">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+      <h1 class="section-heading mb-1">
+        <i class="bi bi-archive-fill"></i>
+        Artifacts
+      </h1>
+
+      <p class="section-sub mb-0">
+        Manage and monitor all registered artifacts
+      </p>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="artifacts-toolbar">
+
+    <!-- Search -->
+    <div class="artifacts-search">
+      <i class="bi bi-search"></i>
+
+      <input
+        type="text"
+        id="artSearch"
+        placeholder="Search artifacts..."
+        oninput="filterArtifacts(this.value)"
+      />
+    </div>
+
+    <!-- Filter -->
+    <div class="artifacts-filter">
+      <select
+        id="catFilter"
+        onchange="filterArtifacts(document.getElementById('artSearch').value)"
+      >
+        <option value="">All Categories</option>
+        <option>Sculpture</option>
+        <option>Painting</option>
+        <option>Manuscript</option>
+        <option>Pottery</option>
+        <option>Textile</option>
+        <option>Armor</option>
+        <option>Jewelry</option>
+      </select>
+    </div>
+
+    <!-- Buttons -->
+    <button
+      class="artifacts-btn primary"
+      data-bs-toggle="modal"
+      data-bs-target="#addArtModal"
+    >
+      <i class="bi bi-plus-circle"></i>
+      Add Artifact
+    </button>
+
+    <button
+      class="artifacts-btn outline"
+      onclick="showSection('import')"
+    >
+      <i class="bi bi-upload"></i>
+      Import CSV
+    </button>
+
+  </div>
+
+  <!-- Artifact Grid -->
+  <div class="artifact-grid" id="artGrid">
+
+    <div class="artifacts-loading">
+      <div class="spinner"></div>
+      Loading artifacts...
+    </div>
+
+  </div>
+
+</section>
+
+  <!-- ── INSPECTIONS ─────────────────────────────────────────── -->
+  <section class="content-section" id="section-inspections">
+    <div class="toolbar">
+      <input type="text" class="search-input" id="inspSearch" placeholder="Search inspections…" oninput="loadInspections()"/>
+      <select class="fselect" id="inspArtFilter" onchange="loadInspections()" style="max-width:220px"><option value="">All Artifacts</option></select>
+      <button class="btn-outline" onclick="exportExcel()" data-permission="can_export_excel"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button class="btn-outline" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    </div>
+    <div class="table-card"><div class="table-scroll"><table class="dtable">
+      <thead><tr><th>ID</th><th>Artifact</th><th>Date</th><th>Type</th><th>Crack</th><th>Fading</th><th>Severity</th><th>Risk</th><th>Actions</th></tr></thead>
+      <tbody id="inspTbody"><tr><td colspan="9" class="td-loading">Loading…</td></tr></tbody>
+    </table></div></div>
+  </section>
+
+  <!-- ── GALLERY ─────────────────────────────────────────────── -->
+  <section class="content-section" id="section-gallery">
+    <div class="toolbar">
+      <select class="fselect" id="galleryArt" onchange="loadGallery(this.value)" style="max-width:280px"><option value="">— Select artifact —</option></select>
+    </div>
+    <div class="gallery-grid" id="galleryGrid"><div class="td-loading">Select an artifact above to view its image gallery</div></div>
+  </section>
+
+  <!-- ── SHIPMENTS ───────────────────────────────────────────── -->
+  <section class="content-section" id="section-shipments">
+    <div class="toolbar">
+      <button class="btn-primary" data-bs-toggle="modal" data-bs-target="#addShipModal" data-permission="can_shipments"><i class="bi bi-plus-circle"></i> New Shipment</button>
+    </div>
+    <div class="table-card"><div class="table-scroll"><table class="dtable">
+      <thead><tr><th>ID</th><th>Artifact</th><th>Origin</th><th>Destination</th><th>Date</th><th>Expected Arrival</th><th>Status</th></tr></thead>
+      <tbody id="shipTbody"><tr><td colspan="7" class="td-loading">Loading…</td></tr></tbody>
+    </table></div></div>
+  </section>
+
+  <!-- ── TRENDS ──────────────────────────────────────────────── -->
+  <section class="content-section" id="section-trends">
+    <div class="toolbar mb-4">
+      <select class="fselect" id="trendArt" onchange="loadTrend(this.value); loadPrediction(this.value)" style="max-width:300px"><option value="">— Select artifact for trend analysis —</option></select>
+    </div>
+    <div class="row g-4 mb-4">
+      <div class="col-lg-8"><div class="chart-card"><div class="chart-hdr">Deterioration Trend & 3-Period Forecast</div><canvas id="trendChart" height="240"></canvas></div></div>
+      <div class="col-lg-4"><div class="panel p-4" id="trendSummary"><div class="result-placeholder" style="height:200px"><i class="bi bi-graph-up-arrow"></i><p>Select an artifact</p></div></div></div>
+    </div>
+    <div class="chart-card"><div class="chart-hdr">Fading Level Over Time</div><canvas id="fadingChart" height="140"></canvas></div>
+    
+<div class="chart-card mt-4" style="margin-top:20px">
+  <div class="chart-hdr" style="display:flex;align-items:center;justify-content:space-between">
+    <span><i class="bi bi-cpu" style="margin-right:8px;color:var(--accent)"></i>
+      AI Deterioration Prediction Engine</span>
+    <span style="font-size:11px;color:var(--muted)">Polynomial regression model</span>
+  </div>
+  <div id="predictionPanel" style="padding:16px 0">
+    <div style="text-align:center;padding:32px;color:var(--muted)">
+      <i class="bi bi-bar-chart-line" style="font-size:40px;opacity:.3;display:block;margin-bottom:10px"></i>
+      <p style="font-size:13px">Select an artifact above to see deterioration prediction</p>
+    </div>
+  </div>
+</div>
+
+
+  </section>
+
+  <!-- ── ALERTS ──────────────────────────────────────────────── -->
+  <section class="content-section" id="section-alerts">
+    <div class="alerts-page-header">
+      <div>
+        <h2 class="section-title"><i class="bi bi-bell-fill"></i> Alerts</h2>
+        <p class="alerts-subtitle">Conservation alerts and damage notifications</p>
+      </div>
+      <div class="alerts-header-actions">
+        <button class="btn-outline" onclick="markAllRead()"><i class="bi bi-check2-all"></i> Mark All Read</button>
+      </div>
+    </div>
+    <div class="alerts-filters">
+      <label class="toggle-sw alerts-unread-toggle">
+        <input type="checkbox" id="unreadOnly" onchange="loadAlerts()"/>
+        <span></span>Unread only
+      </label>
+      <div class="alerts-severity-filters">
+        <button class="sev-filter active" onclick="setSevFilter('ALL',this)">All</button>
+        <button class="sev-filter sev-critical" onclick="setSevFilter('CRITICAL',this)">Critical</button>
+        <button class="sev-filter sev-high"     onclick="setSevFilter('HIGH',this)">High</button>
+        <button class="sev-filter sev-medium"   onclick="setSevFilter('MEDIUM',this)">Medium</button>
+        <button class="sev-filter sev-low"      onclick="setSevFilter('LOW',this)">Low</button>
+      </div>
+      <div class="alerts-count-info" id="alertsCountInfo"></div>
+    </div>
+    <div class="alerts-stats" id="alertsStatsRow"></div>
+    <div id="alertsList"><div class="td-loading">Loading alerts…</div></div>
+  </section>
+
+  <!-- ── REPORTS ─────────────────────────────────────────────── -->
+  <section class="content-section" id="section-reports">
+    <h2 class="section-title"><i class="bi bi-file-earmark-bar-graph"></i> Reports & Export</h2>
+    <div class="reports-grid">
+      <div class="panel p-4">
+        <i class="bi bi-file-earmark-pdf report-icon"></i>
+        <h3>Artifact PDF Report</h3>
+        <p>Full inspection history with AI analysis, damage metrics and recommendations</p>
+        <div class="fgroup mt-3"><select class="fselect" id="pdfArt"><option value="">— Select artifact —</option></select></div>
+        <button class="btn-primary mt-2" onclick="exportPdf()"><i class="bi bi-download"></i> Download PDF</button>
+      </div>
+      <div class="panel p-4">
+        <i class="bi bi-file-earmark-excel report-icon" style="color:#16a34a"></i>
+        <h3>Excel Inspection Log</h3>
+        <p>All inspection records with severity metrics exported as a spreadsheet</p>
+        <div class="fgroup mt-3"><select class="fselect" id="excelArt"><option value="">All Artifacts</option></select></div>
+        <button class="btn-primary mt-2" onclick="exportExcelFiltered()"><i class="bi bi-download"></i> Download Excel</button>
+      </div>
+      <div class="panel p-4">
+        <i class="bi bi-bar-chart-line report-icon" style="color:#7c3aed"></i>
+        <h3>Monthly Summary Chart</h3>
+        <p>Inspection frequency and average severity by month for the selected year</p>
+        <div class="fgroup mt-3"><select class="fselect" id="repYear"><option>2024</option><option selected>2025</option></select></div>
+        <div class="chart-card mt-3" style="padding:12px"><canvas id="repMonthChart" height="180"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── USERS (Admin) ───────────────────────────────────────── -->
+  <section class="content-section" id="section-users">
+    <div class="toolbar">
+      <button class="btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal"><i class="bi bi-person-plus"></i> Add User</button>
+    </div>
+    <div class="table-card"><div class="table-scroll"><table class="dtable">
+      <thead><tr><th>Username</th><th>Full Name</th><th>Email</th><th>Alert Email</th><th>Role</th><th>Active</th><th>Last Login</th></tr></thead>
+      <tbody id="usersTbody"><tr><td colspan="7" class="td-loading">Loading…</td></tr></tbody>
+    </table></div></div>
+  </section>
+
+  <!-- ── IMPORT / EXPORT ─────────────────────────────────────── -->
+  
+
+  <section class="content-section" id="section-import">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+      <div>
+        <h2 class="section-title"><i class="bi bi-arrow-down-up"></i> Import & Export</h2>
+        <p class="section-sub">Manage data import and export operations for the collection</p>
+      </div>
+    </div>
+
+    <!-- ── IMPORT SECTION ───────────────────────────────────────── -->
+    <div class="ie-section-label">
+      <i class="bi bi-upload"></i> Import Data
+    </div>
+    <div class="reports-grid" style="margin-bottom:32px">
+
+      <!-- Import Artifacts from CSV -->
+      <div class="panel ie-card">
+        <div class="ie-card-icon" style="background:rgba(14,165,233,.12);color:#38bdf8">
+          <i class="bi bi-file-earmark-arrow-up"></i>
+        </div>
+        <div class="ie-card-title">Import Artifacts from CSV</div>
+        <div class="ie-card-desc">
+          Bulk-add artifacts to the collection. CSV must include headers:
+          <span class="ie-code">name, category, age, location, description</span>
+        </div>
+        <div class="ie-steps">
+          <div class="ie-step"><span>1</span>Download the template</div>
+          <div class="ie-step"><span>2</span>Fill in artifact data</div>
+          <div class="ie-step"><span>3</span>Upload and import</div>
+        </div>
+        <button class="ie-btn-ghost" onclick="downloadCsvTemplate()" style="margin-bottom:10px">
+          <i class="bi bi-download"></i> Download CSV Template
+        </button>
+        <div class="drop-zone" id="csvDropZone" onclick="document.getElementById('csvInput').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleCsvDrop(event)">
+          <i class="bi bi-cloud-upload drop-icon"></i>
+          <div class="drop-text" id="csvDropText">Click or drag CSV file here</div>
+          <div class="drop-hint">.csv files only</div>
+          <input type="file" id="csvInput" accept=".csv" style="display:none"
+                 onchange="onCsvSelected(this)"/>
+        </div>
+        <button class="ie-btn-primary mt-3" onclick="importCsv()" data-permission="can_import">
+          <i class="bi bi-upload"></i> Import CSV
+        </button>
+        <div id="importResult" class="ie-result"></div>
+      </div>
+
+      <!-- Import Inspections from CSV -->
+      <div class="panel ie-card">
+        <div class="ie-card-icon" style="background:rgba(139,92,246,.12);color:#c4b5fd">
+          <i class="bi bi-clipboard2-data"></i>
+        </div>
+        <div class="ie-card-title">Import Inspections from CSV</div>
+        <div class="ie-card-desc">
+          Bulk-import inspection records. CSV must include headers:
+          <span class="ie-code">artifact_id, inspection_date, inspection_type, crack_detected, fading_level, severity_index, damage_notes</span>
+        </div>
+        <div class="ie-steps">
+          <div class="ie-step"><span>1</span>Download the template</div>
+          <div class="ie-step"><span>2</span>Fill inspection data</div>
+          <div class="ie-step"><span>3</span>Upload and import</div>
+        </div>
+        <button class="ie-btn-ghost" onclick="downloadInspectionCsvTemplate()" style="margin-bottom:10px">
+          <i class="bi bi-download"></i> Download CSV Template
+        </button>
+        <div class="drop-zone" id="inspDropZone" onclick="document.getElementById('inspCsvInput').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleInspDrop(event)">
+          <i class="bi bi-cloud-upload drop-icon"></i>
+          <div class="drop-text" id="inspDropText">Click or drag CSV file here</div>
+          <div class="drop-hint">.csv files only</div>
+          <input type="file" id="inspCsvInput" accept=".csv" style="display:none"
+                 onchange="onInspCsvSelected(this)"/>
+        </div>
+        <button class="ie-btn-primary mt-3" onclick="importInspectionsCsv()" data-permission="can_import">
+          <i class="bi bi-upload"></i> Import Inspections
+        </button>
+        <div id="importInspResult" class="ie-result"></div>
+      </div>
+
+    </div>
+
+    <!-- ── EXPORT SECTION ───────────────────────────────────────── -->
+    <div class="ie-section-label">
+      <i class="bi bi-download"></i> Export Data
+    </div>
+    <div class="reports-grid">
+
+      <!-- Export Inspections Excel -->
+      <div class="panel ie-card">
+        <div class="ie-card-icon" style="background:rgba(16,185,129,.12);color:#34d399">
+          <i class="bi bi-file-earmark-excel"></i>
+        </div>
+        <div class="ie-card-title">Export All Inspections</div>
+        <div class="ie-card-desc">
+          Download the complete inspection log as a formatted Excel spreadsheet, including all damage metrics and AI reports.
+        </div>
+        <div class="ie-meta-row">
+          <span><i class="bi bi-table"></i> Excel (.xlsx)</span>
+          <span><i class="bi bi-layers"></i> All records</span>
+          <span><i class="bi bi-cpu"></i> Includes AI report</span>
+        </div>
+        <button class="ie-btn-primary" onclick="exportExcel()" data-permission="can_export_excel">
+          <i class="bi bi-file-earmark-excel"></i> Export All Excel
+        </button>
+      </div>
+
+      <!-- Export Artifacts CSV -->
+      <div class="panel ie-card">
+        <div class="ie-card-icon" style="background:rgba(201,149,26,.12);color:#e8af2a">
+          <i class="bi bi-file-earmark-spreadsheet"></i>
+        </div>
+        <div class="ie-card-title">Export Artifacts to CSV</div>
+        <div class="ie-card-desc">
+          Download all artifact records as a CSV file. Useful for backup, migration, or analysis in external tools.
+        </div>
+        <div class="ie-meta-row">
+          <span><i class="bi bi-filetype-csv"></i> CSV format</span>
+          <span><i class="bi bi-archive"></i> All artifacts</span>
+          <span><i class="bi bi-shield-check"></i> Backup ready</span>
+        </div>
+        <button class="ie-btn-primary" onclick="exportArtifactsCsv()">
+          <i class="bi bi-download"></i> Export Artifacts CSV
+        </button>
+      </div>
+
+      <!-- Export Alerts CSV -->
+      <div class="panel ie-card">
+        <div class="ie-card-icon" style="background:rgba(220,38,38,.12);color:#f87171">
+          <i class="bi bi-bell-fill"></i>
+        </div>
+        <div class="ie-card-title">Export Alerts Log</div>
+        <div class="ie-card-desc">
+          Download all conservation alerts as a CSV file for compliance reporting and conservation planning.
+        </div>
+        <div class="ie-meta-row">
+          <span><i class="bi bi-filetype-csv"></i> CSV format</span>
+          <span><i class="bi bi-bell"></i> All alerts</span>
+          <span><i class="bi bi-clipboard-check"></i> Compliance ready</span>
+        </div>
+        <button class="ie-btn-primary" onclick="exportAlertsCsv()">
+          <i class="bi bi-download"></i> Export Alerts CSV
+        </button>
+      </div>
+
+      <!-- Export Single Artifact PDF -->
+      <div class="panel ie-card">
+        <div class="ie-card-icon" style="background:rgba(234,88,12,.12);color:#fb923c">
+          <i class="bi bi-file-earmark-pdf"></i>
+        </div>
+        <div class="ie-card-title">Export Artifact PDF Report</div>
+        <div class="ie-card-desc">
+          Generate a detailed PDF condition report for a single artifact, including full inspection history and AI analysis.
+        </div>
+        <div class="ie-meta-row">
+          <span><i class="bi bi-filetype-pdf"></i> PDF format</span>
+          <span><i class="bi bi-archive"></i> Single artifact</span>
+          <span><i class="bi bi-cpu"></i> AI analysis included</span>
+        </div>
+        <select id="iePdfArtSelect" class="fselect" style="margin-bottom:10px">
+          <option value="">— Select artifact —</option>
+        </select>
+        <button class="ie-btn-primary" onclick="ieExportPdf()">
+          <i class="bi bi-file-earmark-pdf"></i> Generate PDF Report
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+<section class="content-section" id="section-audit">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+      <h2 class="section-title"><i class="bi bi-journal-text"></i> Audit Log</h2>
+      <p class="section-sub">Full history of every action taken in the system</p>
+    </div>
+    <button onclick="clearOldAuditLogs()"
+            style="background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);
+                   color:#f87171;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">
+      <i class="bi bi-trash"></i> Clear Old Logs
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;
+              background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px">
+    <input id="auditSearch" type="text" class="finput" placeholder="Search action, user, artifact…"
+           style="max-width:240px" oninput="loadAuditLogs(1)"/>
+    <select id="auditUserFilter" class="fselect" style="max-width:170px" onchange="loadAuditLogs(1)">
+      <option value="">All Users</option>
+    </select>
+    <select id="auditActionFilter" class="fselect" style="max-width:190px" onchange="loadAuditLogs(1)">
+      <option value="">All Actions</option>
+      <option value="Login">Login</option>
+      <option value="Logout">Logout</option>
+      <option value="Analysis">AI Analysis</option>
+      <option value="Created">Artifact Created</option>
+      <option value="Deleted">Artifact Deleted</option>
+      <option value="Fingerprint">Fingerprint</option>
+      <option value="Report">Report</option>
+    </select>
+   <input type="date" id="auditDateFrom" class="finput" style="max-width:155px"
+           title="From date" onchange="loadAuditLogs(1)"/>
+    <input type="date" id="auditDateTo" class="finput" style="max-width:155px"
+           title="To date" onchange="loadAuditLogs(1)"/>
+    <button class="btn-primary" onclick="loadAuditLogs(1)" style="padding:8px 18px;font-size:13px">
+      <i class="bi bi-search"></i> Search
+    </button>
+    <button onclick="exportAuditCSV()"
+            style="padding:8px 14px;font-size:13px;border-radius:8px;cursor:pointer;
+                   background:rgba(22,163,74,.12);border:1px solid rgba(22,163,74,.3);color:#4ade80">
+      <i class="bi bi-download"></i> Export CSV
+    </button>
+    <span id="auditPageInfo"
+          style="margin-left:auto;font-size:12px;color:var(--muted);align-self:center"></span>
+  </div>
+
+  <!-- Table -->
+  <div id="auditTableWrap" class="table-card">
+    <div class="table-scroll">
+      <table class="dtable">
+        <thead>
+          <tr>
+            <th>Timestamp</th><th>User</th><th>Action</th>
+            <th>Artifact</th><th>Details</th><th>IP</th>
+          </tr>
+        </thead>
+        <tbody id="auditTbody">
+          <tr><td colspan="6" class="td-loading">Loading audit logs…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div id="auditPagination"
+       style="display:flex;gap:6px;justify-content:center;margin-top:16px;flex-wrap:wrap"></div>
+</section>
+
+
+<section class="content-section" id="section-heatmap">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+      <h2 class="section-title"><i class="bi bi-grid-3x3-gap-fill"></i> Risk Heatmap</h2>
+      <p class="section-sub">Artifact risk distribution by storage location</p>
+    </div>
+    <button onclick="loadHeatmap()"
+            style="background:var(--bg2);border:1px solid var(--border);color:var(--text);
+                   padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">
+      <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+  </div>
+
+  <!-- Summary stats -->
+  <div id="heatmapSummary"
+       style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-card mb-4">
+    <div class="chart-hdr">
+      <i class="bi bi-bar-chart-fill" style="color:var(--accent)"></i>
+      Risk by Location (Top 12)
+    </div>
+    <div style="position:relative;height:280px">
+      <canvas id="heatmapChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Room cards grid -->
+  <div class="chart-hdr mb-3">
+    <i class="bi bi-geo-alt" style="color:var(--accent)"></i>
+    All Storage Locations — Click to inspect
+  </div>
+  <div id="heatmapGrid"
+       style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+              gap:14px;margin-bottom:24px">
+  </div>
+
+  <!-- Room detail panel -->
+  <div id="heatmapDetailWrap"
+       style="display:none;background:var(--card);border:1px solid var(--border);
+              border-radius:14px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:14px;font-weight:700;color:var(--text)" id="heatmapRoomTitle">
+        Room Details
+      </div>
+      <button onclick="document.getElementById('heatmapDetailWrap').style.display='none'"
+              style="background:var(--bg2);border:1px solid var(--border);color:var(--muted);
+                     padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px">
+        ✕ Close
+      </button>
+    </div>
+    <div id="heatmapRoomDetail"></div>
+  </div>
+</section>
+
+
+
+</div><!-- /.main-content -->
+
+<!-- ══ MODALS ═══════════════════════════════════════════════════ -->
+
+<!-- Add Artifact -->
+<div class="modal fade" id="addArtModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content mc">
+      <div class="mhdr"><h5><i class="bi bi-archive-fill me-2"></i>Register Artifact</h5><button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button></div>
+      <div class="mbody">
+        <div class="row g-3">
+          <div class="col-12"><label class="flabel">Name</label><input type="text" class="finput" id="artName" placeholder="e.g. Bronze Apollo Bust"/></div>
+          <div class="col-md-6"><label class="flabel">Category</label>
+            <select class="fselect" id="artCat"><option>Sculpture</option><option>Painting</option><option>Manuscript</option><option>Pottery</option><option>Textile</option><option>Armor</option><option>Jewelry</option><option>Other</option></select>
+          </div>
+          <div class="col-md-6"><label class="flabel">Age (years)</label><input type="number" class="finput" id="artAge" min="1" placeholder="2000"/></div>
+          <div class="col-12"><label class="flabel">Location</label><input type="text" class="finput" id="artLoc" placeholder="Museum, City, Country"/></div>
+          <div class="col-12"><label class="flabel">Description</label><textarea class="finput" id="artDesc" rows="3" placeholder="Brief description of the artifact…"></textarea></div>
+<div class="col-12"><label class="flabel">Cover Image <small style="color:#64748b">(optional)</small></label><input type="file" class="finput" id="artImage" accept="image/*"/></div>
+        </div>
+      </div>
+      <div class="mftr"><button class="btn-outline" data-bs-dismiss="modal">Cancel</button><button class="btn-primary" onclick="saveArtifact()" data-permission="can_edit_artifacts"><i class="bi bi-check2"></i> Save</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Inspection Detail -->
+<div class="modal fade" id="inspDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content mc">
+      <div class="mhdr"><h5><i class="bi bi-clipboard2-pulse me-2"></i>Inspection Report</h5><button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button></div>
+      <div class="mbody" id="inspDetailBody"><div class="td-loading">Loading…</div></div>
+      <div class="mftr"><button class="btn-outline" data-bs-dismiss="modal">Close</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Shipment -->
+<div class="modal fade" id="addShipModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content mc">
+      <div class="mhdr"><h5><i class="bi bi-truck me-2"></i>New Shipment</h5><button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button></div>
+      <div class="mbody">
+        <div class="row g-3">
+          <div class="col-12"><label class="flabel">Artifact</label><select class="fselect" id="shipArt"><option value="">— Select —</option></select></div>
+          <div class="col-md-6"><label class="flabel">Origin</label><input type="text" class="finput" id="shipOrigin" placeholder="City, Country"/></div>
+          <div class="col-md-6"><label class="flabel">Destination</label><input type="text" class="finput" id="shipDest" placeholder="City, Country"/></div>
+          <div class="col-md-6"><label class="flabel">Shipment Date</label><input type="date" class="finput" id="shipDate"/></div>
+          <div class="col-md-6"><label class="flabel">Expected Arrival</label><input type="date" class="finput" id="shipArrival"/></div>
+          <div class="col-12"><label class="flabel">Notes</label><textarea class="finput" id="shipNotes" rows="2"></textarea></div>
+        </div>
+      </div>
+      <div class="mftr"><button class="btn-outline" data-bs-dismiss="modal">Cancel</button><button class="btn-primary" onclick="saveShipment()"><i class="bi bi-check2"></i> Create</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add User -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content mc">
+      <div class="mhdr"><h5><i class="bi bi-person-plus me-2"></i>Add User</h5><button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button></div>
+      <div class="mbody">
+        <div class="row g-3">
+          <div class="col-md-6"><label class="flabel">Username</label><input type="text" class="finput" id="newUsername"/></div>
+          <div class="col-md-6"><label class="flabel">Full Name</label><input type="text" class="finput" id="newFullName"/></div>
+          <div class="col-12"><label class="flabel">Email</label><input type="email" class="finput" id="newEmail"/></div>
+          <div class="col-12"><label class="flabel">Alert Email <small style="color:#64748b">(where to send damage alerts)</small></label><input type="email" class="finput" id="newAlertEmail"/></div>
+          <div class="col-md-6"><label class="flabel">Password</label><input type="password" class="finput" id="newPassword"/></div>
+          <div class="col-md-6"><label class="flabel">Role</label>
+            <select class="fselect" id="newRole"><option value="1">Admin</option><option value="2">Curator</option><option value="3" selected>Analyst</option><option value="4">Viewer</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="mftr"><button class="btn-outline" data-bs-dismiss="modal">Cancel</button><button class="btn-primary" onclick="saveUser()"><i class="bi bi-check2"></i> Create</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer" class="toast-container"></div>
+
+<!-- Sidebar overlay (mobile) -->
+<div class="sidebar-overlay d-none" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/static/js/app.js"></script>
+<!-- Toast Notifications -->
+<div id="toastWrap" class="toast-wrap"></div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+<div class="modal fade" id="qrModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:380px">
+    <div class="modal-content mc">
+      <div class="mhdr">
+        <h5 id="qrModalTitle" style="font-size:15px;font-weight:700;color:var(--text)">
+          <i class="bi bi-qr-code me-2"></i>QR Code
+        </h5>
+        <button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="mbody" style="text-align:center;padding:24px">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px">
+          Scan with mobile to open artifact directly
+        </p>
+        <img id="qrImage" src="" alt="QR Code"
+             style="width:240px;height:240px;border-radius:12px;
+                    border:3px solid var(--border);background:#fff;padding:8px"/>
+        <div style="margin-top:16px;display:flex;gap:10px;justify-content:center">
+          <button id="qrDownloadBtn" class="btn-primary"
+                  style="padding:8px 18px;border-radius:8px;font-size:13px">
+            <i class="bi bi-download"></i> Download PNG
+          </button>
+          <button onclick="openQrScanner()"
+                  style="background:var(--bg2);color:var(--text);border:1px solid var(--border);
+                         padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer">
+            <i class="bi bi-qr-code-scan"></i> Open Scanner
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
