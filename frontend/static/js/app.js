@@ -1175,59 +1175,305 @@ async function printInspection(id) {
 }
 
 // ── Gallery ───────────────────────────────────────────────────────
-async function loadGallery(aid) {
-  if (!aid) return;
+// ── Gallery ───────────────────────────────────────────────────────
+let _galleryAllImages = []; // cache for filter
+let _galleryView = 'grid';  // 'grid' or 'all'
+
+function setGalleryView(mode) {
+  _galleryView = mode;
+  const gridBtn = document.getElementById('galleryViewGrid');
+  const allBtn  = document.getElementById('galleryViewAll');
+  const artSel  = document.getElementById('galleryArt');
+  const typeSel = document.getElementById('galleryTypeFilter');
+  const accent  = 'background:var(--accent);color:#fff';
+  const muted   = 'background:transparent;color:var(--muted)';
+
+  if (mode === 'grid') {
+    if (gridBtn) gridBtn.style.cssText += ';' + accent;
+    if (allBtn)  allBtn.style.cssText  += ';' + muted;
+    if (artSel)  artSel.style.display  = '';
+    if (typeSel) typeSel.style.display = 'none';
+    const aid = artSel?.value;
+    if (aid) loadGallery(aid);
+    else showGalleryEmpty();
+  } else {
+    if (gridBtn) gridBtn.style.cssText += ';' + muted;
+    if (allBtn)  allBtn.style.cssText  += ';' + accent;
+    if (artSel)  artSel.style.display  = 'none';
+    if (typeSel) typeSel.style.display = '';
+    loadGalleryAll();
+  }
+}
+
+function showGalleryEmpty() {
   const grid = document.getElementById('galleryGrid');
-  grid.innerHTML = '<div class="loading-cell">Loading images…</div>';
+  if (!grid) return;
+  grid.innerHTML = `
+    <div style="grid-column:1/-1;padding:60px 20px;text-align:center">
+      <i class="bi bi-images" style="font-size:48px;opacity:.15;display:block;margin-bottom:12px"></i>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:16px">Select an artifact to view its images</div>
+      <div style="font-size:12px;color:var(--muted);opacity:.6">or switch to <strong>All Artifacts</strong> to browse everything</div>
+    </div>`;
+  const countEl = document.getElementById('galleryCount');
+  if (countEl) countEl.style.display = 'none';
+}
+
+function renderGalleryItems(images, artifactName = null) {
+  const grid = document.getElementById('galleryGrid');
+  if (!images.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)">
+      <i class="bi bi-image" style="font-size:36px;opacity:.2;display:block;margin-bottom:10px"></i>
+      No images found</div>`;
+    return;
+  }
+
+  const typeColors = {
+    'Standard':'#60a5fa','Before':'#fbbf24','After':'#4ade80',
+    'Analysis':'#a78bfa','Heatmap':'#f87171'
+  };
+
+  grid.innerHTML = images.map(img => {
+    const typeColor = typeColors[img.image_type] || 'var(--muted)';
+    const label = artifactName || img.artifact_name || '';
+    return `
+    <div class="gallery-item" onclick="openLightbox(imgUrl('${img.file_path}'))"
+      style="position:relative;border-radius:10px;overflow:hidden;cursor:pointer;
+             background:var(--card);border:1px solid var(--border);
+             transition:transform .2s,box-shadow .2s"
+      onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(0,0,0,.5)'"
+      onmouseout="this.style.transform='';this.style.boxShadow=''">
+      <img src="${imgUrl(img.file_path)}" alt="${label}" loading="lazy"
+        style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block"
+        onerror="this.src='/static/images/no-img.svg'"/>
+      <!-- Type badge -->
+      <div style="position:absolute;top:8px;left:8px;padding:3px 8px;border-radius:12px;
+        font-size:10px;font-weight:700;letter-spacing:.5px;
+        background:rgba(0,0,0,.6);color:${typeColor};backdrop-filter:blur(4px)">
+        ${img.image_type||'Standard'}
+      </div>
+      <!-- Hover overlay -->
+      <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.8) 0%,transparent 50%);
+        opacity:0;transition:opacity .2s;display:flex;flex-direction:column;justify-content:flex-end;padding:12px"
+        class="gallery-overlay">
+        ${label ? `<div style="font-size:12px;font-weight:600;color:#fff;margin-bottom:2px">${label}</div>` : ''}
+        <div style="font-size:11px;color:rgba(255,255,255,.6)">${img.uploaded_at?.slice(0,10)||'—'}</div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)">
+          <i class="bi bi-zoom-in" style="font-size:28px;color:#fff;opacity:.9"></i>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Activate hover overlays via CSS trick
+  grid.querySelectorAll('.gallery-item').forEach(item => {
+    const overlay = item.querySelector('.gallery-overlay');
+    item.addEventListener('mouseenter', () => { if(overlay) overlay.style.opacity='1'; });
+    item.addEventListener('mouseleave', () => { if(overlay) overlay.style.opacity='0'; });
+  });
+
+  // Update count
+  const countEl = document.getElementById('galleryCount');
+  const countNum = document.getElementById('galleryCountNum');
+  if (countEl) countEl.style.display = '';
+  if (countNum) countNum.textContent = images.length;
+}
+
+function filterGalleryByType() {
+  const type = document.getElementById('galleryTypeFilter')?.value || '';
+  const filtered = type
+    ? _galleryAllImages.filter(i => (i.image_type||'Standard').toLowerCase() === type.toLowerCase())
+    : _galleryAllImages;
+  renderGalleryItems(filtered);
+}
+
+function updateGalleryTypeOptions(images) {
+  const sel = document.getElementById('galleryTypeFilter');
+  if (!sel) return;
+  // Get unique types from actual data
+  const types = [...new Set(images.map(i => i.image_type || 'Standard'))].sort();
+  sel.innerHTML = '<option value="">All Types</option>' +
+    types.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+async function loadGallery(aid) {
+  if (!aid) { showGalleryEmpty(); return; }
+  const grid = document.getElementById('galleryGrid');
+  grid.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)"><div class="spinner" style="width:24px;height:24px;border-width:2px;display:inline-block;margin-bottom:10px"></div><br>Loading images…</div>';
   try {
     const r = await api(`/api/artifacts/${aid}/gallery`);
     const images = await r.json();
-    if (!images.length) { grid.innerHTML='<div class="loading-cell">No images for this artifact</div>'; return; }
-    grid.innerHTML = images.map(img => `
-      <div class="gallery-item" onclick="openLightbox('/${img.file_path}')">
-        <img src="/${img.file_path}" alt="image" loading="lazy" onerror="this.src='/static/images/no-img.svg'"/>
-        <div class="gallery-item-info">
-          <div class="gallery-item-type">${img.image_type||'Standard'}</div>
-          <div class="gallery-item-date">${img.uploaded_at?.slice(0,10)||'—'}</div>
-        </div>
-      </div>`).join('');
-  } catch(e) { grid.innerHTML='<div class="loading-cell">Error loading gallery</div>'; }
+    _galleryAllImages = images;
+    updateGalleryTypeOptions(images);
+    renderGalleryItems(images);
+  } catch(e) { grid.innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)">Error loading gallery</div>'; }
+}
+
+async function loadGalleryAll() {
+  const grid = document.getElementById('galleryGrid');
+  grid.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)"><div class="spinner" style="width:24px;height:24px;border-width:2px;display:inline-block;margin-bottom:10px"></div><br>Loading all images…</div>';
+  try {
+    // Fetch all artifacts then load all their gallery images in parallel
+    const r = await api('/api/artifacts');
+    const artifacts = await r.json();
+    const allImages = [];
+    await Promise.all(artifacts.slice(0, 30).map(async art => {
+      try {
+        const gr = await api(`/api/artifacts/${art.artifact_id}/gallery`);
+        const imgs = await gr.json();
+        imgs.forEach(img => { img.artifact_name = art.name; });
+        allImages.push(...imgs);
+      } catch(_) {}
+    }));
+    _galleryAllImages = allImages;
+    // Build filter options from actual image types in data
+    updateGalleryTypeOptions(allImages);
+    renderGalleryItems(allImages);
+  } catch(e) {
+    grid.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)">Error loading gallery</div>';
+  }
 }
 
 // ── Shipments ─────────────────────────────────────────────────────
+function shipStatusMeta(status) {
+  const map = {
+    'Pending':    { color:'#fbbf24', bg:'rgba(245,158,11,.15)', icon:'bi-hourglass-split' },
+    'In Transit': { color:'#93c5fd', bg:'rgba(37,99,235,.15)',  icon:'bi-arrow-left-right' },
+    'Delivered':  { color:'#4ade80', bg:'rgba(22,163,74,.15)',  icon:'bi-check-circle-fill' },
+    'Cancelled':  { color:'#f87171', bg:'rgba(220,38,38,.15)',  icon:'bi-x-circle-fill' },
+  };
+  return map[status] || { color:'var(--muted)', bg:'var(--card2)', icon:'bi-circle' };
+}
+
+function conditionBadge(c) {
+  if (!c) return '<span style="color:var(--muted);font-size:11px">—</span>';
+  const map = { 'Good':'#4ade80','Fair':'#fbbf24','Poor':'#fb923c','Critical':'#f87171' };
+  return `<span style="font-size:12px;font-weight:600;color:${map[c]||'var(--muted)'}">${c}</span>`;
+}
+
 async function loadShipments() {
+  const tbody = document.getElementById('shipTbody'); if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" class="td-loading">Loading…</td></tr>';
   try {
     const r = await api('/api/shipments');
-    const ships = await r.json();
-    const tbody = document.getElementById('shipTbody'); if (!tbody) return;
-    if (!ships.length) { tbody.innerHTML='<tr><td colspan="7" class="loading-cell">No shipments</td></tr>'; return; }
-    tbody.innerHTML = ships.map(s => `
-      <tr>
-        <td style="color:var(--muted)">#${s.shipment_id}</td>
-        <td><strong>${s.artifact_name}</strong></td>
-        <td>${s.origin||'—'}</td>
-        <td>${s.destination||'—'}</td>
-        <td>${s.shipment_date||'—'}</td>
-        <td><span class="ship-status ship-${s.status}">${s.status}</span></td>
-        <td><button class="btn-icon" onclick="viewShipment(${s.shipment_id})"><i class="bi bi-eye"></i></button></td>
-      </tr>`).join('');
-  } catch(e) { console.error(e); }
+    let ships = await r.json();
+    const statusFilter = document.getElementById('shipStatusFilter')?.value || '';
+
+    // Update stat counters
+    const setEl = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+    setEl('ship-total',     ships.length);
+    setEl('ship-pending',   ships.filter(s => s.status === 'Pending').length);
+    setEl('ship-transit',   ships.filter(s => s.status === 'In Transit').length);
+    setEl('ship-delivered', ships.filter(s => s.status === 'Delivered').length);
+
+    if (statusFilter) ships = ships.filter(s => s.status === statusFilter);
+
+    if (!ships.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="td-loading">No shipments found${statusFilter?' for this status':''}.</td></tr>`;
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0,10);
+    tbody.innerHTML = ships.map(s => {
+      const meta = shipStatusMeta(s.status);
+      const isOverdue = s.expected_arrival && s.expected_arrival < today && s.status !== 'Delivered' && s.status !== 'Cancelled';
+      const daysLeft = s.expected_arrival ? Math.ceil((new Date(s.expected_arrival) - new Date()) / 86400000) : null;
+      const arrivalDisplay = s.expected_arrival
+        ? `<div style="font-size:12px;color:${isOverdue?'#f87171':'var(--text)'}">
+            ${s.expected_arrival}
+            ${isOverdue ? '<span style="font-size:10px;color:#f87171;margin-left:4px;font-weight:600">OVERDUE</span>'
+              : daysLeft !== null && daysLeft <= 3 && s.status !== 'Delivered'
+                ? `<span style="font-size:10px;color:#fbbf24;margin-left:4px">in ${daysLeft}d</span>` : ''}
+          </div>`
+        : '<span style="color:var(--muted)">—</span>';
+
+      return `<tr style="${isOverdue?'background:rgba(220,38,38,.04)':''}">
+        <td style="color:var(--muted);font-size:12px">#${s.shipment_id}</td>
+        <td>
+          <div style="font-weight:600;font-size:13px">${s.artifact_name}</div>
+          ${s.tracking_number?`<div style="font-size:11px;color:var(--muted);margin-top:2px"><i class="bi bi-upc-scan"></i> ${s.tracking_number}</div>`:''}
+        </td>
+        <td>
+          <div style="font-size:12px"><i class="bi bi-geo-alt" style="color:var(--muted)"></i> ${s.origin||'—'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px"><i class="bi bi-arrow-down" style="margin-left:2px"></i> ${s.destination||'—'}</div>
+        </td>
+        <td style="font-size:12px;color:var(--text2)">${s.shipment_date||'—'}</td>
+        <td>${arrivalDisplay}</td>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${meta.bg};color:${meta.color}">
+            <i class="bi ${meta.icon}"></i>${s.status}
+          </span>
+        </td>
+        <td>${conditionBadge(s.condition_on_arrival||s.condition_out)}</td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button class="btn-icon" title="View" onclick="viewShipment(${s.shipment_id})"><i class="bi bi-eye"></i></button>
+            ${s.status!=='Delivered'&&s.status!=='Cancelled'
+              ?`<button class="btn-icon" title="Update status" onclick="openUpdateShipment(${s.shipment_id},'${s.status}')"><i class="bi bi-arrow-repeat"></i></button>`:''}
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error(e); tbody.innerHTML='<tr><td colspan="8" class="td-loading">Error loading shipments</td></tr>'; }
+}
+
+function openUpdateShipment(id, currentStatus) {
+  document.getElementById('updateShipId').value = id;
+  document.getElementById('updateShipStatus').value = currentStatus;
+  document.getElementById('updateShipNotes').value = '';
+  document.getElementById('updateShipCondition').value = '';
+  const condRow = document.getElementById('conditionArrivalRow');
+  if (condRow) condRow.style.display = currentStatus === 'Delivered' ? '' : 'none';
+  document.getElementById('updateShipStatus').onchange = function() {
+    if (condRow) condRow.style.display = this.value === 'Delivered' ? '' : 'none';
+  };
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('updateShipModal')).show();
+}
+
+async function saveShipmentUpdate() {
+  const id     = document.getElementById('updateShipId').value;
+  const status = document.getElementById('updateShipStatus').value;
+  const notes  = document.getElementById('updateShipNotes').value.trim();
+  const cond   = document.getElementById('updateShipCondition').value;
+  if (!id||!status) { toast('Select a status','warning'); return; }
+  try {
+    const body = { status, notes };
+    if (cond) body.condition_on_arrival = cond;
+    const r = await api(`/api/shipments/${id}`, { method:'PATCH', body });
+    if (r.ok) {
+      toast('Shipment updated!','success');
+      bootstrap.Modal.getInstance(document.getElementById('updateShipModal'))?.hide();
+      loadShipments();
+    } else { const d = await r.json(); toast(d.error||'Update failed','error'); }
+  } catch(e) { toast('Network error','error'); }
 }
 
 async function saveShipment() {
-  const aid     = document.getElementById('shipArt').value;
-  const origin  = document.getElementById('shipOrigin').value.trim();
-  const dest    = document.getElementById('shipDest').value.trim();
-  const date    = document.getElementById('shipDate').value;
-  const arrival = document.getElementById('shipArrival').value;
-  const notes   = document.getElementById('shipNotes').value.trim();
-  if (!aid||!origin||!dest||!date) { toast('Artifact, origin, destination and date required','warning'); return; }
+  const aid      = document.getElementById('shipArt').value;
+  const origin   = document.getElementById('shipOrigin').value.trim();
+  const dest     = document.getElementById('shipDest').value.trim();
+  const date     = document.getElementById('shipDate').value;
+  const arrival  = document.getElementById('shipArrival').value;
+  const notes    = document.getElementById('shipNotes').value.trim();
+  const carrier  = document.getElementById('shipCarrier')?.value.trim()||'';
+  const tracking = document.getElementById('shipTracking')?.value.trim()||'';
+  const condOut  = document.getElementById('shipConditionOut')?.value||'Good';
+  const insure   = document.getElementById('shipInsurance')?.value||'';
+  if (!aid||!origin||!dest||!date) { toast('Artifact, origin, destination and date are required','warning'); return; }
   try {
-    const r = await api('/api/shipments', { method:'POST', body:{ artifact_id:parseInt(aid), origin, destination:dest, shipment_date:date, expected_arrival:arrival, notes } });
+    const r = await api('/api/shipments', { method:'POST', body:{
+      artifact_id:parseInt(aid), origin, destination:dest,
+      shipment_date:date, expected_arrival:arrival, notes,
+      carrier, tracking_number:tracking,
+      condition_out:condOut,
+      insurance_value:insure?parseFloat(insure):null,
+    }});
     const d = await r.json();
     if (r.ok) {
       toast('Shipment created!','success');
       bootstrap.Modal.getInstance(document.getElementById('addShipModal'))?.hide();
+      ['shipArt','shipOrigin','shipDest','shipDate','shipArrival','shipNotes','shipCarrier','shipTracking','shipInsurance'].forEach(id=>{
+        const el=document.getElementById(id); if(el) el.value='';
+      });
       loadShipments();
     } else toast(d.error||'Failed','error');
   } catch(e) { toast('Network error','error'); }
@@ -2316,6 +2562,23 @@ function riskColor(risk) {
 }
 function truncate(s, n) { return s?.length > n ? s.slice(0,n)+'…' : s; }
 // ── Lightbox ──────────────────────────────────────────────────────
+function imgUrl(filePath) {
+  if (!filePath) return '/static/images/no-img.svg';
+  // Fix Windows backslashes to forward slashes
+  filePath = filePath.replace(/\\/g, '/');
+  // Already a full URL
+  if (filePath.startsWith('http')) return filePath;
+  // Already correct absolute path /uploads/...
+  if (filePath.startsWith('/uploads/')) return filePath;
+  // Has uploads/ prefix (no leading slash) → /uploads/filename
+  if (filePath.startsWith('uploads/')) return '/' + filePath;
+  // Has static/uploads/ prefix → strip to /uploads/filename
+  if (filePath.startsWith('static/uploads/')) return '/' + filePath.replace('static/uploads/', 'uploads/');
+  if (filePath.startsWith('/static/uploads/')) return filePath.replace('/static/uploads/', '/uploads/');
+  // Bare filename only → /uploads/filename
+  return '/uploads/' + filePath;
+}
+
 function openLightbox(src) {
   // Remove existing lightbox if any
   document.getElementById('lightboxOverlay')?.remove();

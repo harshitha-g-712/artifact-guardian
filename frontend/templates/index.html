@@ -458,21 +458,94 @@
 
   <!-- ── GALLERY ─────────────────────────────────────────────── -->
   <section class="content-section" id="section-gallery">
-    <div class="toolbar">
-      <select class="fselect" id="galleryArt" onchange="loadGallery(this.value)" style="max-width:280px"><option value="">— Select artifact —</option></select>
+
+    <!-- Toolbar -->
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px">
+      <!-- View toggle -->
+      <div style="display:flex;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px">
+        <button id="galleryViewGrid" onclick="setGalleryView('grid')"
+          style="padding:5px 12px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;
+                 background:var(--accent);color:#fff;display:flex;align-items:center;gap:5px">
+          <i class="bi bi-grid-3x3-gap-fill"></i> Grid
+        </button>
+        <button id="galleryViewAll" onclick="setGalleryView('all')"
+          style="padding:5px 12px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;
+                 background:transparent;color:var(--muted);display:flex;align-items:center;gap:5px">
+          <i class="bi bi-collection"></i> All Artifacts
+        </button>
+      </div>
+
+      <!-- Artifact selector (shown in grid mode) -->
+      <select class="fselect" id="galleryArt" onchange="loadGallery(this.value)" style="max-width:280px">
+        <option value="">— Select artifact —</option>
+      </select>
+
+      <!-- Image type filter -->
+      <select class="fselect" id="galleryTypeFilter" onchange="filterGalleryByType()" style="max-width:160px;display:none">
+        <option value="">All Types</option>
+      </select>
+
+      <!-- Image count badge -->
+      <div id="galleryCount" style="margin-left:auto;font-size:12px;color:var(--muted);display:none">
+        <i class="bi bi-images"></i> <span id="galleryCountNum">0</span> images
+      </div>
     </div>
-    <div class="gallery-grid" id="galleryGrid"><div class="td-loading">Select an artifact above to view its image gallery</div></div>
+
+    <!-- Gallery grid -->
+    <div class="gallery-grid" id="galleryGrid">
+      <div class="td-loading" style="grid-column:1/-1;padding:60px 20px;text-align:center">
+        <i class="bi bi-images" style="font-size:48px;opacity:.15;display:block;margin-bottom:12px"></i>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:16px">Select an artifact to view its images</div>
+        <div style="font-size:12px;color:var(--muted);opacity:.6">or switch to <strong>All Artifacts</strong> to browse everything</div>
+      </div>
+    </div>
+
   </section>
 
   <!-- ── SHIPMENTS ───────────────────────────────────────────── -->
   <section class="content-section" id="section-shipments">
-    <div class="toolbar">
-      <button class="btn-primary" data-bs-toggle="modal" data-bs-target="#addShipModal" data-permission="can_shipments"><i class="bi bi-plus-circle"></i> New Shipment</button>
+
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(37,99,235,.15);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="bi bi-truck"></i></div>
+        <div><div style="font-size:24px;font-weight:700;color:var(--text);line-height:1" id="ship-total">—</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Total</div></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,.15);color:#fbbf24;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="bi bi-hourglass-split"></i></div>
+        <div><div style="font-size:24px;font-weight:700;color:var(--text);line-height:1" id="ship-pending">—</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Pending</div></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(37,99,235,.15);color:#93c5fd;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="bi bi-arrow-left-right"></i></div>
+        <div><div style="font-size:24px;font-weight:700;color:var(--text);line-height:1" id="ship-transit">—</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">In Transit</div></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(22,163,74,.15);color:#4ade80;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="bi bi-check-circle-fill"></i></div>
+        <div><div style="font-size:24px;font-weight:700;color:var(--text);line-height:1" id="ship-delivered">—</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Delivered</div></div>
+      </div>
     </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn-primary" data-bs-toggle="modal" data-bs-target="#addShipModal" data-permission="can_shipments">
+        <i class="bi bi-plus-circle"></i> New Shipment
+      </button>
+      <select class="fselect" id="shipStatusFilter" onchange="loadShipments()" style="max-width:160px">
+        <option value="">All Statuses</option>
+        <option value="Pending">Pending</option>
+        <option value="In Transit">In Transit</option>
+        <option value="Delivered">Delivered</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+      <button class="btn-outline" onclick="loadShipments()" style="margin-left:auto"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    </div>
+
+    <!-- Table -->
     <div class="table-card"><div class="table-scroll"><table class="dtable">
-      <thead><tr><th>ID</th><th>Artifact</th><th>Origin</th><th>Destination</th><th>Date</th><th>Expected Arrival</th><th>Status</th></tr></thead>
-      <tbody id="shipTbody"><tr><td colspan="7" class="td-loading">Loading…</td></tr></tbody>
+      <thead><tr><th>ID</th><th>Artifact</th><th>Route</th><th>Shipped</th><th>Expected Arrival</th><th>Status</th><th>Condition</th><th>Actions</th></tr></thead>
+      <tbody id="shipTbody"><tr><td colspan="8" class="td-loading">Loading…</td></tr></tbody>
     </table></div></div>
+
   </section>
 
   <!-- ── TRENDS ──────────────────────────────────────────────── -->
@@ -916,20 +989,79 @@
 
 <!-- Add Shipment -->
 <div class="modal fade" id="addShipModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content mc">
-      <div class="mhdr"><h5><i class="bi bi-truck me-2"></i>New Shipment</h5><button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button></div>
+      <div class="mhdr">
+        <h5><i class="bi bi-truck me-2" style="color:var(--accent)"></i>New Shipment</h5>
+        <button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
       <div class="mbody">
         <div class="row g-3">
-          <div class="col-12"><label class="flabel">Artifact</label><select class="fselect" id="shipArt"><option value="">— Select —</option></select></div>
-          <div class="col-md-6"><label class="flabel">Origin</label><input type="text" class="finput" id="shipOrigin" placeholder="City, Country"/></div>
-          <div class="col-md-6"><label class="flabel">Destination</label><input type="text" class="finput" id="shipDest" placeholder="City, Country"/></div>
-          <div class="col-md-6"><label class="flabel">Shipment Date</label><input type="date" class="finput" id="shipDate"/></div>
+          <div class="col-12"><label class="flabel">Artifact <span style="color:#f87171">*</span></label><select class="fselect" id="shipArt"><option value="">— Select artifact —</option></select></div>
+          <div class="col-md-6"><label class="flabel">Origin <span style="color:#f87171">*</span></label><input type="text" class="finput" id="shipOrigin" placeholder="e.g. New Delhi, India"/></div>
+          <div class="col-md-6"><label class="flabel">Destination <span style="color:#f87171">*</span></label><input type="text" class="finput" id="shipDest" placeholder="e.g. London, UK"/></div>
+          <div class="col-md-6"><label class="flabel">Shipment Date <span style="color:#f87171">*</span></label><input type="date" class="finput" id="shipDate"/></div>
           <div class="col-md-6"><label class="flabel">Expected Arrival</label><input type="date" class="finput" id="shipArrival"/></div>
-          <div class="col-12"><label class="flabel">Notes</label><textarea class="finput" id="shipNotes" rows="2"></textarea></div>
+          <div class="col-md-6"><label class="flabel">Carrier / Transport</label><input type="text" class="finput" id="shipCarrier" placeholder="e.g. DHL, Air India Cargo"/></div>
+          <div class="col-md-6"><label class="flabel">Tracking Number</label><input type="text" class="finput" id="shipTracking" placeholder="e.g. DHL1234567890"/></div>
+          <div class="col-md-6"><label class="flabel">Condition on Departure</label>
+            <select class="fselect" id="shipConditionOut">
+              <option value="Good">Good</option><option value="Fair">Fair</option>
+              <option value="Poor">Poor</option><option value="Critical">Critical</option>
+            </select>
+          </div>
+          <div class="col-md-6"><label class="flabel">Insurance Value (₹)</label><input type="number" class="finput" id="shipInsurance" placeholder="e.g. 5000000"/></div>
+          <div class="col-12"><label class="flabel">Notes / Special Instructions</label><textarea class="finput" id="shipNotes" rows="2" placeholder="e.g. Fragile — climate controlled transport required"></textarea></div>
         </div>
       </div>
-      <div class="mftr"><button class="btn-outline" data-bs-dismiss="modal">Cancel</button><button class="btn-primary" onclick="saveShipment()"><i class="bi bi-check2"></i> Create</button></div>
+      <div class="mftr">
+        <button class="btn-outline" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-primary" onclick="saveShipment()"><i class="bi bi-check2"></i> Create Shipment</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Update Shipment Status Modal -->
+<div class="modal fade" id="updateShipModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content mc">
+      <div class="mhdr">
+        <h5><i class="bi bi-arrow-repeat me-2" style="color:var(--accent)"></i>Update Shipment</h5>
+        <button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="mbody">
+        <input type="hidden" id="updateShipId"/>
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="flabel">New Status</label>
+            <select class="fselect" id="updateShipStatus">
+              <option value="Pending">Pending</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Delivered">Delivered</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="col-12" id="conditionArrivalRow" style="display:none">
+            <label class="flabel">Condition on Arrival</label>
+            <select class="fselect" id="updateShipCondition">
+              <option value="">— Select —</option>
+              <option value="Good">Good ✅</option>
+              <option value="Fair">Fair ⚠️</option>
+              <option value="Poor">Poor 🔴</option>
+              <option value="Critical">Critical ❗</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="flabel">Update Notes</label>
+            <textarea class="finput" id="updateShipNotes" rows="2" placeholder="e.g. Arrived safely, minor packaging damage"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="mftr">
+        <button class="btn-outline" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-primary" onclick="saveShipmentUpdate()"><i class="bi bi-check2"></i> Update Status</button>
+      </div>
     </div>
   </div>
 </div>

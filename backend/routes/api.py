@@ -88,7 +88,7 @@ def _save_file(file, allowed):
         return None, None
     ext = file.filename.rsplit(".", 1)[1].lower()
     fname = f"{uuid.uuid4().hex}.{ext}"
-    fpath = os.path.join(_upload_dir(), fname)
+    fpath = _upload_dir().rstrip('/\\') + '/' + fname
     data = file.read()
     with open(fpath, "wb") as f:
         f.write(data)
@@ -527,7 +527,7 @@ def import_csv():
                 f.write(resp.content)
             #update_artifact_cover(new_id, fpath)
             # Store relative path only (e.g., "uploads/abc123.jpg")
-            relative_path = os.path.join("uploads", fname)
+            relative_path = "uploads/" + fname  # Always forward slash, even on Windows
             update_artifact_cover(new_id, relative_path)  # ✅ CORRECT
             log_action("Cover Image Downloaded", new_id, a["name"], image_url)
         except Exception as e:
@@ -550,11 +550,15 @@ def gallery(aid):
     artifact = get_artifact(aid)
     if artifact and artifact.get('cover_image'):
         cover = {
-            'file_path': artifact['cover_image'],
+            'file_path': artifact['cover_image'].replace('\\', '/').replace('\\', '/'),
             'image_type': 'Cover',
             'uploaded_at': artifact.get('created_at', ''),
         }
         images = [cover] + images
+    # Normalize all paths to forward slashes
+    for img in images:
+        if img.get('file_path'):
+            img['file_path'] = img['file_path'].replace('\\', '/').replace('\\', '/')
     return jsonify(images)
 
 
