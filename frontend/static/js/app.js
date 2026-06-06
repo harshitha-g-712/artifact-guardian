@@ -336,14 +336,24 @@ function renderArtifactGrid(artifacts) {
     const sevPct = (sev / 10 * 100).toFixed(0);
     const sevClass = `sev-${Math.floor(sev)}`;
     const status = a.status || 'Good';
-    const imgHtml = a.cover_image
-      ? `<img src="/${a.cover_image}" alt="${a.name}" loading="lazy"/>`
+    const imgSrc = a.cover_image ? imgUrl(a.cover_image) : null;
+    const imgHtml = imgSrc
+      ? `<img src="${imgSrc}" alt="${a.name}" loading="lazy"/>`
       : `<i class="bi bi-archive no-img"></i>`;
     return `
-    <div class="artifact-card">
-      <div class="artifact-card-img">${imgHtml}</div>
+    <div class="artifact-card" data-id="${a.artifact_id}">
+      <div class="artifact-card-img" onclick="openArtifactDetail(${a.artifact_id})" style="cursor:pointer;position:relative;overflow:hidden">
+        ${imgHtml}
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:background .2s"
+          onmouseover="this.style.background='rgba(0,0,0,.5)'"
+          onmouseout="this.style.background='rgba(0,0,0,0)'">
+          <i class="bi bi-eye-fill" style="color:#fff;font-size:22px;opacity:0;transition:opacity .2s"
+            onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'"></i>
+        </div>
+      </div>
       <div class="artifact-card-body">
-        <div class="artifact-name" title="${a.name}">${a.name}</div>
+        <div class="artifact-name" title="${a.name}" onclick="openArtifactDetail(${a.artifact_id})"
+          style="cursor:pointer" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color=''">${a.name}</div>
         <div class="artifact-meta">
           <span><i class="bi bi-tag"></i>${a.category}</span>
           <span><i class="bi bi-hourglass"></i>${a.age} yrs</span><br>
@@ -356,18 +366,209 @@ function renderArtifactGrid(artifacts) {
             <div class="sev-bar"><div class="sev-fill ${sevClass}" style="width:${sevPct}%"></div></div>
           </div>
           <div class="artifact-actions">
+            <button class="btn-icon" title="View Details" onclick="openArtifactDetail(${a.artifact_id})"><i class="bi bi-eye"></i></button>
             <button class="btn-icon" title="Inspect" onclick="openAnalyzeFor(${a.artifact_id})"><i class="bi bi-cpu"></i></button>
             <button class="btn-icon" title="Trend" onclick="openTrendFor(${a.artifact_id})"><i class="bi bi-graph-up"></i></button>
             <button class="btn-icon" title="Export PDF" onclick="exportPdfFor(${a.artifact_id})"><i class="bi bi-file-pdf"></i></button>
-            <button class="btn-icon" title="QR Code"
-          onclick="showArtifactQr(${a.artifact_id}, '${a.name.replace(/'/g,"\\'")}')">
-    <i class="bi bi-qr-code"></i>
-  </button>
+            <button class="btn-icon" title="QR Code" onclick="showArtifactQr(${a.artifact_id}, '${a.name.replace(/'/g,"\\'")}')" ><i class="bi bi-qr-code"></i></button>
           </div>
         </div>
       </div>
     </div>`;
   }).join('');
+}
+
+
+// ── Artifact Detail Modal ──────────────────────────────────────────
+async function openArtifactDetail(id) {
+  const art = STATE.artifacts.find(a => a.artifact_id === id);
+  if (!art) return;
+
+  document.getElementById('artDetailModal')?.remove();
+
+  const sev = parseFloat(art.max_severity || 0);
+  const sevColor = sev >= 7 ? '#f87171' : sev >= 5 ? '#fb923c' : sev >= 3 ? '#fbbf24' : '#4ade80';
+  const status = art.status || 'Good';
+  const imgSrc = art.cover_image ? imgUrl(art.cover_image) : null;
+
+  const modal = document.createElement('div');
+  modal.id = 'artDetailModal';
+  modal.style.cssText = `position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);
+    display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)`;
+
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;
+      width:100%;max-width:860px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;
+      box-shadow:0 32px 80px rgba(0,0,0,.7)">
+
+      <!-- Header -->
+      <div style="padding:18px 24px;border-bottom:1px solid var(--border);
+        display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div>
+          <div style="font-size:17px;font-weight:700;color:var(--text)">${art.name}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">
+            <i class="bi bi-tag" style="margin-right:4px"></i>${art.category}
+            <span style="margin:0 8px;opacity:.3">|</span>
+            <i class="bi bi-geo-alt" style="margin-right:4px"></i>${art.location||'—'}
+          </div>
+        </div>
+        <button onclick="document.getElementById('artDetailModal').remove()"
+          style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;
+            width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+            border-radius:8px;transition:background .15s"
+          onmouseover="this.style.background='var(--card2)'" onmouseout="this.style.background='none'">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div style="display:flex;overflow:hidden;flex:1;min-height:0">
+
+        <!-- Left: Image -->
+        <div style="width:300px;flex-shrink:0;background:#0a0f1a;position:relative;overflow:hidden">
+          ${imgSrc
+            ? `<img src="${imgSrc}" alt="${art.name}"
+                style="width:100%;height:100%;object-fit:cover"
+                onerror="this.style.display='none'">`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                <i class="bi bi-archive" style="font-size:64px;opacity:.1;color:#fff"></i>
+              </div>`}
+          <!-- Status overlay -->
+          <div style="position:absolute;top:12px;left:12px;padding:4px 10px;border-radius:20px;
+            font-size:11px;font-weight:700;
+            background:${status==='Good'?'rgba(22,163,74,.85)':status==='Poor'?'rgba(220,38,38,.85)':'rgba(245,158,11,.85)'};
+            color:#fff;backdrop-filter:blur(4px)">
+            ${status}
+          </div>
+        </div>
+
+        <!-- Right: Details -->
+        <div style="flex:1;overflow-y:auto;padding:20px 24px">
+
+          <!-- Key stats row -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:${sevColor}">${sev.toFixed(1)}</div>
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Severity</div>
+            </div>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--text)">${art.age||'—'}</div>
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Age (yrs)</div>
+            </div>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--text)" id="detailInspCount">—</div>
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Inspections</div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          ${art.description ? `
+          <div style="margin-bottom:18px">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px;font-weight:600">Description</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.6;background:var(--bg);
+              border:1px solid var(--border);border-radius:8px;padding:12px">${art.description}</div>
+          </div>` : ''}
+
+          <!-- Details grid -->
+          <div style="margin-bottom:18px">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px;font-weight:600">Details</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              ${[
+                ['Category',   art.category],
+                ['Location',   art.location],
+                ['Age',        art.age ? art.age + ' years' : '—'],
+                ['Status',     status],
+                ['Max Severity', sev.toFixed(1) + ' / 10'],
+                ['Artifact ID', '#' + art.artifact_id],
+              ].map(([label, val]) => `
+                <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+                  <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">${label}</div>
+                  <div style="font-size:13px;color:var(--text);font-weight:500">${val||'—'}</div>
+                </div>`).join('')}
+            </div>
+          </div>
+
+          <!-- Recent inspections -->
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px;font-weight:600">Recent Inspections</div>
+            <div id="detailInspList" style="font-size:12px;color:var(--muted)">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block"></div>
+                Loading...
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Footer actions -->
+      <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:8px;
+        flex-shrink:0;background:var(--bg2);flex-wrap:wrap">
+        <button onclick="openAnalyzeFor(${art.artifact_id});document.getElementById('artDetailModal').remove()"
+          style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+            background:var(--accent);border:none;color:#111;display:flex;align-items:center;gap:6px">
+          <i class="bi bi-cpu"></i> AI Analyze
+        </button>
+        <button onclick="openTrendFor(${art.artifact_id});document.getElementById('artDetailModal').remove()"
+          style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+            background:var(--card);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;gap:6px">
+          <i class="bi bi-graph-up"></i> View Trends
+        </button>
+        <button onclick="showArtifactQr(${art.artifact_id},'${art.name.replace(/'/g,"\'")}');document.getElementById('artDetailModal').remove()"
+          style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+            background:var(--card);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;gap:6px">
+          <i class="bi bi-qr-code"></i> QR Code
+        </button>
+        <button onclick="exportPdfFor(${art.artifact_id})"
+          style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+            background:var(--card);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;gap:6px">
+          <i class="bi bi-file-pdf"></i> Export PDF
+        </button>
+        <button onclick="document.getElementById('artDetailModal').remove()"
+          style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+            background:var(--card);border:1px solid var(--border);color:var(--muted);margin-left:auto">
+          Close
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  // Load inspection count + recent inspections async
+  try {
+    const r = await api(`/api/inspections?artifact_id=${id}`);
+    const inspections = await r.json();
+    const countEl = document.getElementById('detailInspCount');
+    const listEl = document.getElementById('detailInspList');
+    if (countEl) countEl.textContent = inspections.length;
+    if (listEl) {
+      if (!inspections.length) {
+        listEl.innerHTML = '<div style="color:var(--muted);font-size:12px">No inspections yet</div>';
+      } else {
+        const recent = inspections.slice(0, 5);
+        listEl.innerHTML = recent.map(ins => {
+          const riskColor = ins.risk_level === 'HIGH' ? '#f87171' : ins.risk_level === 'MEDIUM' ? '#fbbf24' : '#4ade80';
+          return `<div style="display:flex;align-items:center;justify-content:space-between;
+            padding:8px 10px;background:var(--bg);border:1px solid var(--border);
+            border-radius:8px;margin-bottom:6px">
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:12px">${ins.inspection_type||'Routine'}</div>
+              <div style="color:var(--muted);font-size:11px;margin-top:2px">${ins.inspection_date||'—'}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px;font-weight:700;color:${riskColor}">${ins.risk_level||'—'}</div>
+              <div style="font-size:11px;color:var(--muted)">Sev: ${parseFloat(ins.severity_index||0).toFixed(1)}</div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+    }
+  } catch(e) {
+    const listEl = document.getElementById('detailInspList');
+    if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:12px">Could not load inspections</div>';
+  }
 }
 
 function openAnalyzeFor(id) {
@@ -1800,9 +2001,16 @@ function openQrScanner() {
         </button>
       </div>
 
-      <div style="position:relative;background:#000;aspect-ratio:4/3;overflow:hidden;flex-shrink:0">
+      <div style="position:relative;background:#0a0f1a;aspect-ratio:4/3;overflow:hidden;flex-shrink:0">
+        <!-- Loading spinner shown while camera starts -->
+        <div id="qrCameraLoading" style="position:absolute;inset:0;display:flex;flex-direction:column;
+          align-items:center;justify-content:center;z-index:2;background:#0a0f1a">
+          <div style="width:36px;height:36px;border:3px solid rgba(245,158,11,.2);
+            border-top-color:#f59e0b;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:12px"></div>
+          <div style="font-size:12px;color:rgba(255,255,255,.4)">Starting camera...</div>
+        </div>
         <video id="qrVideo" autoplay playsinline muted
-          style="width:100%;height:100%;object-fit:cover;display:block"></video>
+          style="width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .4s"></video>
         <div id="qrCameraFallback" style="position:absolute;inset:0;display:none;align-items:center;
              justify-content:center;text-align:center;padding:28px;color:var(--muted);background:#020407">
           <div>
@@ -1825,22 +2033,24 @@ function openQrScanner() {
         <canvas id="qrCanvas" style="display:none"></canvas>
       </div>
 
-      <div id="qrStatus" style="padding:12px 20px;font-size:13px;color:var(--muted);text-align:center;
-           border-bottom:1px solid var(--border);min-height:44px;display:flex;align-items:center;justify-content:center">
-        <i class="bi bi-camera" style="margin-right:6px"></i> Starting camera...
+      <div id="qrStatus" style="padding:10px 20px;font-size:12px;color:var(--muted);text-align:center;
+           border-bottom:1px solid var(--border);min-height:40px;display:flex;align-items:center;
+           justify-content:center;gap:6px;background:var(--bg)">
+        <i class="bi bi-camera" style="margin-right:4px"></i> Starting camera...
       </div>
 
-      <div style="padding:12px 20px;border-bottom:1px solid var(--border);
-                  display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border);
+                  display:flex;gap:8px;justify-content:center;flex-wrap:wrap;background:var(--bg2)">
         <button onclick="startQrCamera()"
-          style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
-                 background:var(--accent);border:1px solid var(--accent);color:#111827">
+          style="padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+                 background:var(--accent);border:none;color:#111827;display:flex;align-items:center;gap:5px">
           <i class="bi bi-arrow-clockwise"></i> Retry Camera
         </button>
         <button onclick="document.getElementById('qrImageInput').click()"
-          style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
-                 background:var(--bg);border:1px solid var(--border);color:var(--text)">
-          <i class="bi bi-image"></i> Upload QR Image
+          style="padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+                 background:var(--card);border:1px solid var(--border);color:var(--text);
+                 display:flex;align-items:center;gap:5px">
+          <i class="bi bi-upload"></i> Upload QR Image
         </button>
         <input id="qrImageInput" type="file" accept="image/*" style="display:none">
       </div>
@@ -1870,7 +2080,10 @@ function openQrScanner() {
                  background:var(--bg);border:1px solid var(--border);color:var(--text)">Close</button>
       </div>
     </div>
-    <style>@keyframes qrScan{0%{top:10%}50%{top:85%}100%{top:10%}}</style>`;
+    <style>
+      @keyframes qrScan{0%{top:10%}50%{top:85%}100%{top:10%}}
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style>`;
 
   document.body.appendChild(modal);
   modal.addEventListener('click', e => { if (e.target === modal) closeQrScanner(); });
@@ -1919,6 +2132,11 @@ async function startQrCamera() {
 
     try { await video.play(); } catch(_) { /* autoplay may already be running */ }
 
+    // Hide loading spinner, fade in video
+    const loadingEl = document.getElementById('qrCameraLoading');
+    if (loadingEl) loadingEl.style.display = 'none';
+    video.style.opacity = '1';
+
     status.innerHTML = '<i class="bi bi-camera-fill" style="color:#4ade80;margin-right:6px"></i> Camera active - point at a QR code';
     _qrInterval = setInterval(scanQrFrame, 300);
   } catch (e) {
@@ -1933,6 +2151,8 @@ function showQrCameraError(message) {
   const status = document.getElementById('qrStatus');
   const video = document.getElementById('qrVideo');
   const fallback = document.getElementById('qrCameraFallback');
+  const loadingEl = document.getElementById('qrCameraLoading');
+  if (loadingEl) loadingEl.style.display = 'none';
   const frame = document.getElementById('qrScannerFrame');
   clearInterval(_qrInterval); _qrInterval = null; _qrLastResult = null; _qrScanSource = 'blocked';
   const result = document.getElementById('qrResult');
