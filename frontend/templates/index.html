@@ -78,22 +78,55 @@
   <!-- ── DASHBOARD ──────────────────────────────────────────── -->
   <section class="content-section active" id="section-dashboard">
     <div class="stat-grid">
-      <div class="stat-card" style="--c:#3b82f6">
-        <div class="stat-icon"><i class="bi bi-archive"></i></div>
-        <div><div class="stat-val" id="s-artifacts">—</div><div class="stat-lbl">Total Artifacts</div></div>
+
+      <!-- Total Artifacts -->
+      <div class="stat-card" style="--c:#3b82f6" onclick="showSection('artifacts')" title="View all artifacts">
+        <div class="stat-icon"><i class="bi bi-archive-fill"></i></div>
+        <div style="flex:1;min-width:0">
+          <div class="stat-val" id="s-artifacts">—</div>
+          <div class="stat-lbl">Total Artifacts</div>
+          <div class="stat-sub" style="color:#3b82f6">
+            <i class="bi bi-arrow-right-circle-fill"></i> View collection
+          </div>
+        </div>
       </div>
-      <div class="stat-card" style="--c:#f59e0b">
-        <div class="stat-icon"><i class="bi bi-search"></i></div>
-        <div><div class="stat-val" id="s-inspections">—</div><div class="stat-lbl">Inspections</div></div>
+
+      <!-- Total Inspections -->
+      <div class="stat-card" style="--c:#f59e0b" onclick="showSection('inspections')" title="View inspections">
+        <div class="stat-icon"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+        <div style="flex:1;min-width:0">
+          <div class="stat-val" id="s-inspections">—</div>
+          <div class="stat-lbl">Total Inspections</div>
+          <div class="stat-sub" style="color:#f59e0b">
+            <i class="bi bi-arrow-right-circle-fill"></i> View records
+          </div>
+        </div>
       </div>
-      <div class="stat-card" style="--c:#ef4444">
-        <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
-        <div><div class="stat-val" id="s-alerts">—</div><div class="stat-lbl">Active Alerts</div></div>
+
+      <!-- Unread Alerts -->
+      <div class="stat-card" style="--c:#ef4444" onclick="showSection('alerts')" title="View alerts">
+        <div class="stat-icon"><i class="bi bi-bell-fill"></i></div>
+        <div style="flex:1;min-width:0">
+          <div class="stat-val" id="s-alerts">—</div>
+          <div class="stat-lbl">Unread Alerts</div>
+          <div class="stat-sub" id="s-alerts-sub" style="color:#ef4444">
+            <i class="bi bi-arrow-right-circle-fill"></i> View alerts
+          </div>
+        </div>
       </div>
-      <div class="stat-card" style="--c:#8b5cf6">
+
+      <!-- Avg Severity -->
+      <div class="stat-card" style="--c:#8b5cf6" onclick="showSection('trends')" title="View trends">
         <div class="stat-icon"><i class="bi bi-speedometer2"></i></div>
-        <div><div class="stat-val" id="s-severity">—</div><div class="stat-lbl">Avg Severity</div></div>
+        <div style="flex:1;min-width:0">
+          <div class="stat-val" id="s-severity">—</div>
+          <div class="stat-lbl">Avg Severity / 10</div>
+          <div class="stat-sub" id="s-severity-sub" style="color:#8b5cf6">
+            <i class="bi bi-arrow-right-circle-fill"></i> View trends
+          </div>
+        </div>
       </div>
+
     </div>
     <div class="row g-4 mb-4">
       <div class="col-lg-7"><div class="chart-card"><div class="chart-hdr">Severity by Artifact <button class="refresh-btn" onclick="loadDashboard()"><i class="bi bi-arrow-clockwise"></i></button></div><canvas id="barChart" height="220"></canvas></div></div>

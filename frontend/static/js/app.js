@@ -212,6 +212,7 @@ function showSection(name) {
   };
 
   document.getElementById('pageTitle').textContent = titles[name] || name;
+  document.title = (titles[name] || name) + ' — Artifact Guardian';
 
   // Lazy-load section data
   if (name === 'inspections') loadInspections();
@@ -433,6 +434,34 @@ async function loadDashboard() {
     document.getElementById('s-inspections').textContent = stats.total_inspections;
     document.getElementById('s-alerts').textContent      = stats.unread_alerts;
     document.getElementById('s-severity').textContent    = stats.avg_severity?.toFixed(1) || '0.0';
+
+    // Smart severity sub-label
+    const avgSev = parseFloat(stats.avg_severity || 0);
+    const sevSub = document.getElementById('s-severity-sub');
+    if (sevSub) {
+      const risk = avgSev >= 7 ? { label:'Critical risk', color:'#f87171',  icon:'bi-exclamation-octagon-fill' }
+                 : avgSev >= 5 ? { label:'High risk',     color:'#fb923c',  icon:'bi-exclamation-triangle-fill' }
+                 : avgSev >= 3 ? { label:'Moderate risk', color:'#a78bfa',  icon:'bi-dash-circle-fill' }
+                 :               { label:'Low risk',      color:'#4ade80',  icon:'bi-check-circle-fill' };
+      sevSub.style.color = risk.color;
+      sevSub.innerHTML = `<i class="bi ${risk.icon}"></i> ${risk.label}`;
+    }
+
+    // Smart alerts sub-label
+    const alertsSub = document.getElementById('s-alerts-sub');
+    if (alertsSub) {
+      const unread = parseInt(stats.unread_alerts || 0);
+      if (unread === 0) {
+        alertsSub.style.color = '#4ade80';
+        alertsSub.innerHTML = '<i class="bi bi-check-circle-fill"></i> All clear';
+      } else if (unread >= 5) {
+        alertsSub.style.color = '#f87171';
+        alertsSub.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Needs attention';
+      } else {
+        alertsSub.style.color = '#ef4444';
+        alertsSub.innerHTML = `<i class="bi bi-arrow-right-circle-fill"></i> ${unread} unread`;
+      }
+    }
 
     renderDashboardCharts(stats, monthly);
     renderRecentTable(insps);
@@ -1497,162 +1526,9 @@ function downloadArtifactQr(name) {
 }
 
 // ── QR Scanner — Nav Button ────────────────────────────────────────
-function openQrScanner() {
-  const existing = document.getElementById('qrScannerModal');
-  if (existing) existing.remove();
-  const modal = document.createElement('div');
-  modal.id = 'qrScannerModal';
-  modal.style.cssText = `position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);
-    display:flex;align-items:center;justify-content:center;padding:20px;`;
-  modal.innerHTML = `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;
-                width:100%;max-width:480px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.7)">
-      <div style="padding:16px 20px;border-bottom:1px solid var(--border);
-                  display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:15px;font-weight:700;color:var(--text)">
-          <i class="bi bi-qr-code-scan" style="color:var(--accent);margin-right:8px"></i>QR Code Scanner
-        </div>
-        <button onclick="closeQrScanner()"
-          style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;
-                 width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px">
-          <i class="bi bi-x-lg"></i>
-        </button>
-      </div>
-      <div style="position:relative;background:#000;aspect-ratio:4/3;overflow:hidden">
-        <video id="qrVideo" autoplay playsinline muted
-          style="width:100%;height:100%;object-fit:cover;display:block"></video>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
-          <div style="width:200px;height:200px;position:relative">
-            <div style="position:absolute;top:0;left:0;width:30px;height:30px;border-top:3px solid #f59e0b;border-left:3px solid #f59e0b;border-radius:3px 0 0 0"></div>
-            <div style="position:absolute;top:0;right:0;width:30px;height:30px;border-top:3px solid #f59e0b;border-right:3px solid #f59e0b;border-radius:0 3px 0 0"></div>
-            <div style="position:absolute;bottom:0;left:0;width:30px;height:30px;border-bottom:3px solid #f59e0b;border-left:3px solid #f59e0b;border-radius:0 0 0 3px"></div>
-            <div style="position:absolute;bottom:0;right:0;width:30px;height:30px;border-bottom:3px solid #f59e0b;border-right:3px solid #f59e0b;border-radius:0 0 3px 0"></div>
-            <div id="qrScanLine" style="position:absolute;left:10px;right:10px;height:2px;
-              background:linear-gradient(90deg,transparent,#f59e0b,transparent);
-              animation:qrScan 2s linear infinite;top:50%"></div>
-          </div>
-        </div>
-        <canvas id="qrCanvas" style="display:none"></canvas>
-      </div>
-      <div id="qrStatus" style="padding:12px 20px;font-size:13px;color:var(--muted);text-align:center;
-           border-bottom:1px solid var(--border);min-height:44px;display:flex;align-items:center;justify-content:center">
-        <i class="bi bi-camera" style="margin-right:6px"></i> Starting camera…
-      </div>
-      <div id="qrResult" style="display:none;padding:16px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">Scanned Result</div>
-        <div id="qrResultText" style="font-size:13px;color:var(--text);word-break:break-all;
-             background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px"></div>
-        <div id="qrArtifactInfo" style="display:none"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button id="qrOpenBtn" style="display:none;padding:8px 16px;border-radius:8px;font-size:12px;
-            font-weight:600;cursor:pointer;background:var(--accent);color:#fff;border:none"
-            onclick="qrOpenLink()">
-            <i class="bi bi-box-arrow-up-right"></i> Open Link
-          </button>
-          <button onclick="qrRescan()"
-            style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
-                   background:var(--bg);border:1px solid var(--border);color:var(--text)">
-            <i class="bi bi-arrow-repeat"></i> Scan Again
-          </button>
-        </div>
-      </div>
-      <div style="padding:12px 20px;display:flex;justify-content:center">
-        <button onclick="closeQrScanner()"
-          style="padding:8px 24px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
-                 background:var(--bg);border:1px solid var(--border);color:var(--text)">Close</button>
-      </div>
-    </div>
-    <style>@keyframes qrScan{0%{top:10%}50%{top:85%}100%{top:10%}}</style>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if (e.target === modal) closeQrScanner(); });
-  startQrCamera();
-}
-
 let _qrStream = null, _qrInterval = null, _qrLastResult = null, _qrScanSource = null;
 
-async function startQrCamera() {
-  const video = document.getElementById('qrVideo');
-  const status = document.getElementById('qrStatus');
-  if (!video) return;
-  try {
-    _qrStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } } });
-    video.srcObject = _qrStream;
-    await video.play();
-    status.innerHTML = '<i class="bi bi-camera-fill" style="color:#4ade80;margin-right:6px"></i> Camera active — point at a QR code';
-    _qrInterval = setInterval(scanQrFrame, 300);
-  } catch(e) {
-    status.innerHTML = e.name === 'NotAllowedError'
-      ? '<i class="bi bi-camera-video-off" style="color:#f87171;margin-right:6px"></i> Camera permission denied.'
-      : '<i class="bi bi-exclamation-circle" style="color:#f87171;margin-right:6px"></i> Camera error: ' + e.message;
-  }
-}
-
-function scanQrFrame() {
-  const video = document.getElementById('qrVideo');
-  const canvas = document.getElementById('qrCanvas');
-  if (!video || !canvas || video.readyState !== 4) return;
-  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0);
-  if ('BarcodeDetector' in window) {
-    new BarcodeDetector({ formats:['qr_code'] }).detect(canvas)
-      .then(codes => { if (codes.length > 0) qrFoundResult(codes[0].rawValue); })
-      .catch(() => {});
-    return;
-  }
-  if (typeof jsQR !== 'undefined') {
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imgData.data, imgData.width, imgData.height);
-    if (code) qrFoundResult(code.data);
-  }
-}
-
-function qrFoundResult(text) {
-  if (_qrScanSource === 'blocked') return;
-  if (text === _qrLastResult) return;
-  _qrLastResult = text;
-  clearInterval(_qrInterval); _qrInterval = null;
-  document.getElementById('qrStatus').innerHTML =
-    '<i class="bi bi-check-circle-fill" style="color:#4ade80;margin-right:6px"></i> QR Code detected!';
-  document.getElementById('qrResultText').textContent = text;
-  document.getElementById('qrResult').style.display = 'block';
-  const openBtn = document.getElementById('qrOpenBtn');
-  if (text.startsWith('http://') || text.startsWith('https://')) {
-    openBtn.style.display = 'inline-flex';
-    openBtn.dataset.url = text;
-    if (text.includes('/mobile-camera')) {
-      const info = document.getElementById('qrArtifactInfo');
-      info.style.display = 'block';
-      info.innerHTML = `<div style="background:rgba(212,160,23,.1);border:1px solid rgba(212,160,23,.3);
-        border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#f59e0b">
-        <i class="bi bi-shield-check"></i> Artifact Guardian mobile camera link detected</div>`;
-    }
-  }
-  toast('QR Code scanned!', 'success');
-}
-
-function qrOpenLink() {
-  const url = document.getElementById('qrOpenBtn')?.dataset.url;
-  if (url) window.open(url, '_blank');
-}
-
-function qrRescan() {
-  _qrLastResult = null;
-  document.getElementById('qrResult').style.display = 'none';
-  document.getElementById('qrStatus').innerHTML =
-    '<i class="bi bi-camera-fill" style="color:#4ade80;margin-right:6px"></i> Camera active — point at a QR code';
-  _qrInterval = setInterval(scanQrFrame, 300);
-}
-
-function closeQrScanner() {
-  clearInterval(_qrInterval); _qrInterval = null; _qrLastResult = null;
-  if (_qrStream) { _qrStream.getTracks().forEach(t => t.stop()); _qrStream = null; }
-  _qrScanSource = null;
-  const modal = document.getElementById('qrScannerModal');
-  if (modal) modal.remove();
-}
-
-// QR scanner permission fallback. Kept isolated to the scanner modal.
+// QR scanner with camera fallback + image upload support.
 function openQrScanner() {
   const existing = document.getElementById('qrScannerModal');
   if (existing) existing.remove();
@@ -1784,8 +1660,19 @@ async function startQrCamera() {
       if (firstError.name === 'NotAllowedError' || firstError.name === 'SecurityError') throw firstError;
       _qrStream = await navigator.mediaDevices.getUserMedia({ video:true });
     }
+    // Assign stream and ensure video renders (fixes black screen on 127.0.0.1)
     video.srcObject = _qrStream;
-    await video.play();
+    video.setAttribute('autoplay', '');
+    video.setAttribute('playsinline', '');
+    video.muted = true;
+
+    await new Promise((resolve) => {
+      video.onloadedmetadata = () => resolve();
+      setTimeout(resolve, 3000); // fallback timeout
+    });
+
+    try { await video.play(); } catch(_) { /* autoplay may already be running */ }
+
     status.innerHTML = '<i class="bi bi-camera-fill" style="color:#4ade80;margin-right:6px"></i> Camera active - point at a QR code';
     _qrInterval = setInterval(scanQrFrame, 300);
   } catch (e) {
@@ -1884,6 +1771,97 @@ function qrRescan() {
   } else {
     startQrCamera();
   }
+}
+function qrFoundResult(text) {
+  if (_qrScanSource === 'blocked') return;
+  if (text === _qrLastResult) return;
+  _qrLastResult = text;
+  clearInterval(_qrInterval); _qrInterval = null;
+  document.getElementById('qrStatus').innerHTML =
+    '<i class="bi bi-check-circle-fill" style="color:#4ade80;margin-right:6px"></i> QR Code detected!';
+  document.getElementById('qrResultText').textContent = text;
+  document.getElementById('qrResult').style.display = 'block';
+  const openBtn = document.getElementById('qrOpenBtn');
+  const info = document.getElementById('qrArtifactInfo');
+
+  // Check if it is a same-origin artifact URL (e.g. http://127.0.0.1:15000/#artifact-42)
+  const isSameOrigin = text.startsWith(window.location.origin + '/') || text === window.location.origin ||
+                       text.startsWith(window.location.origin + '#') ||
+                       (text.includes('/#artifact-'));
+  const artifactMatch = text.match(/#artifact-(\d+)/);
+
+  if (artifactMatch) {
+    // Navigate internally to the artifact
+    openBtn.style.display = 'inline-flex';
+    openBtn.textContent = '';
+    openBtn.innerHTML = '<i class="bi bi-box-arrow-in-right" style="margin-right:6px"></i>Open Artifact';
+    openBtn.dataset.url = text;
+    if (info) {
+      info.style.display = 'block';
+      const artId = artifactMatch[1];
+      info.innerHTML = `<div onclick="qrOpenLink()" style="background:rgba(212,160,23,.1);border:1px solid rgba(212,160,23,.3);
+        border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#f59e0b;
+        cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .2s"
+        onmouseover="this.style.background='rgba(212,160,23,.25)'"
+        onmouseout="this.style.background='rgba(212,160,23,.1)'">
+        <i class="bi bi-archive" style="font-size:16px"></i>
+        <span><strong>Artifact #${artId} detected</strong> — click to open</span>
+        <i class="bi bi-arrow-right-circle" style="margin-left:auto;font-size:14px"></i>
+      </div>`;
+    }
+  } else if (text.startsWith('http://') || text.startsWith('https://')) {
+    openBtn.style.display = 'inline-flex';
+    openBtn.innerHTML = '<i class="bi bi-box-arrow-up-right" style="margin-right:6px"></i>Open Link';
+    openBtn.dataset.url = text;
+    if (text.includes('/mobile-camera') && info) {
+      info.style.display = 'block';
+      info.innerHTML = `<div style="background:rgba(212,160,23,.1);border:1px solid rgba(212,160,23,.3);
+        border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#f59e0b">
+        <i class="bi bi-shield-check"></i> Artifact Guardian mobile camera link detected</div>`;
+    }
+  }
+  toast('QR Code scanned!', 'success');
+}
+
+function qrOpenLink() {
+  const url = document.getElementById('qrOpenBtn')?.dataset.url;
+  if (!url) return;
+  const artifactMatch = url.match(/#artifact-(\d+)/);
+  if (artifactMatch && url.startsWith(window.location.origin)) {
+    // Navigate internally — close scanner then show the artifact section
+    closeQrScanner();
+    showSection('artifacts');
+    // Scroll to / highlight the artifact card after a short delay
+    setTimeout(() => {
+      const id = parseInt(artifactMatch[1]);
+      // Find card by matching any button onclick containing this artifact id
+      let found = false;
+      document.querySelectorAll('.artifact-card').forEach(card => {
+        const hasId = Array.from(card.querySelectorAll('[onclick]')).some(el =>
+          el.getAttribute('onclick').includes('(' + id + ',') ||
+          el.getAttribute('onclick').includes('(' + id + ')')
+        );
+        if (hasId && !found) {
+          found = true;
+          card.scrollIntoView({ behavior:'smooth', block:'center' });
+          card.style.outline = '2px solid var(--accent)';
+          card.style.boxShadow = '0 0 0 4px rgba(212,160,23,.3)';
+          setTimeout(() => { card.style.outline = ''; card.style.boxShadow = ''; }, 2500);
+        }
+      });
+      toast('Artifact #' + id + (found ? ' found!' : ' — check Artifacts section'), 'success');
+    }, 300);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
+function closeQrScanner() {
+  clearInterval(_qrInterval); _qrInterval = null; _qrLastResult = null;
+  if (_qrStream) { _qrStream.getTracks().forEach(t => t.stop()); _qrStream = null; }
+  _qrScanSource = null;
+  const modal = document.getElementById('qrScannerModal');
+  if (modal) modal.remove();
 }
 
 // ── Risk Heatmap ──────────────────────────────────────────────────

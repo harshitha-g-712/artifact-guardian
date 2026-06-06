@@ -259,7 +259,7 @@ body::after{
    ════════════════════════════════════════════════════════════════ */
 .main-content{
   margin-left:var(--sidebar-w);
-  padding-top:var(--topbar-h);
+  padding-top:calc(var(--topbar-h) + 4px);
   min-height:100vh;
   transition:margin var(--t);
   position:relative;z-index:1;
@@ -294,6 +294,15 @@ body::after{
   display:flex;align-items:center;gap:18px;
   transition:transform var(--t),box-shadow var(--t),border-color var(--t);
   position:relative;overflow:hidden;
+  cursor:pointer;
+}
+/* Subtle top accent line per card color */
+.stat-card::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg, var(--c,var(--accent)), transparent);
+  opacity:.6;
+  pointer-events:none;
 }
 .stat-card::after{
   content:'';
@@ -302,9 +311,18 @@ body::after{
   pointer-events:none;
 }
 .stat-card:hover{
-  transform:translateY(-3px);
-  box-shadow:var(--shadow);
+  transform:translateY(-4px);
+  box-shadow:0 12px 40px rgba(0,0,0,.45), 0 0 0 1px var(--border-l);
   border-color:var(--border-l);
+}
+
+/* Sub-label for trend/action text under stat-lbl */
+.stat-sub{
+  font-size:11px;
+  margin-top:6px;
+  display:flex;align-items:center;gap:5px;
+  color:var(--muted);
+  transition:color var(--t);
 }
 .stat-icon{
   width:52px;height:52px;border-radius:14px;
@@ -315,8 +333,8 @@ body::after{
 .stat-card[style*="--c:#f59e0b"] .stat-icon{background:var(--amber-a);color:#fbbf24}
 .stat-card[style*="--c:#ef4444"] .stat-icon{background:var(--red-a);color:#f87171}
 .stat-card[style*="--c:#8b5cf6"] .stat-icon{background:var(--purple-a);color:#a78bfa}
-.stat-val{font-size:28px;font-weight:700;color:var(--text);line-height:1;letter-spacing:-.5px}
-.stat-lbl{font-size:11px;color:var(--text2);margin-top:5px;text-transform:uppercase;letter-spacing:.8px;font-weight:500}
+.stat-val{font-size:32px;font-weight:700;color:var(--text);line-height:1;letter-spacing:-.5px}
+.stat-lbl{font-size:10px;color:var(--text2);margin-top:5px;text-transform:uppercase;letter-spacing:1px;font-weight:600}
 
 /* ════════════════════════════════════════════════════════════════
    CHARTS
