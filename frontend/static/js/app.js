@@ -294,7 +294,7 @@ async function loadArtifactsAll() {
 function populateAllArtifactSelects() {
   const selects = ['analyzeArtifact','videoArtifact','cameraArtifact','galleryArt',
                    'trendArt','pdfArt','excelArt','filterArtifact',
-                   'inspArtifactFilter','shipArt'];
+                   'inspArtFilter','shipArt'];
   selects.forEach(id => populateArtifactSelectFromCache(id));
 }
 
@@ -342,36 +342,53 @@ function renderArtifactGrid(artifacts) {
       : `<i class="bi bi-archive no-img"></i>`;
     return `
     <div class="artifact-card" data-id="${a.artifact_id}">
-      <div class="artifact-card-img" onclick="openArtifactDetail(${a.artifact_id})" style="cursor:pointer;position:relative;overflow:hidden">
+
+      <!-- Image -->
+      <div class="artifact-card-img" onclick="openArtifactDetail(${a.artifact_id})">
         ${imgHtml}
-        <div style="position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:background .2s"
-          onmouseover="this.style.background='rgba(0,0,0,.5)'"
-          onmouseout="this.style.background='rgba(0,0,0,0)'">
-          <i class="bi bi-eye-fill" style="color:#fff;font-size:22px;opacity:0;transition:opacity .2s"
-            onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'"></i>
+        <div style="position:absolute;top:10px;left:10px;
+          background:rgba(0,0,0,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+          color:#fff;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+          padding:3px 9px;border-radius:5px">${a.category}</div>
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0);
+          display:flex;align-items:center;justify-content:center;transition:background .25s"
+          onmouseover="this.style.background='rgba(0,0,0,.45)';this.querySelector('.chov').style.opacity='1';this.querySelector('.chov').style.transform='scale(1)'"
+          onmouseout="this.style.background='rgba(0,0,0,0)';this.querySelector('.chov').style.opacity='0';this.querySelector('.chov').style.transform='scale(.8)'">
+          <div class="chov" style="width:44px;height:44px;border-radius:50%;
+            background:rgba(255,255,255,.18);backdrop-filter:blur(4px);
+            display:flex;align-items:center;justify-content:center;
+            opacity:0;transform:scale(.8);transition:all .25s">
+            <i class="bi bi-eye-fill" style="color:#fff;font-size:18px"></i>
+          </div>
         </div>
       </div>
+
+      <!-- Body -->
       <div class="artifact-card-body">
-        <div class="artifact-name" title="${a.name}" onclick="openArtifactDetail(${a.artifact_id})"
-          style="cursor:pointer" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color=''">${a.name}</div>
+        <div class="artifact-name" onclick="openArtifactDetail(${a.artifact_id})"
+          title="${a.name}">${a.name}</div>
         <div class="artifact-meta">
-          <span><i class="bi bi-tag"></i>${a.category}</span>
-          <span><i class="bi bi-hourglass"></i>${a.age} yrs</span><br>
-          <span><i class="bi bi-geo-alt"></i>${a.location||'—'}</span>
+          <i class="bi bi-hourglass-split"></i>${a.age} yrs
+          &nbsp;&middot;&nbsp;
+          <i class="bi bi-geo-alt"></i>${(a.location||'—').split('-')[0].trim()}
         </div>
-        <div class="artifact-card-footer">
+      </div>
+
+      <!-- Footer -->
+      <div class="artifact-card-footer">
+        <div class="artifact-card-footer-top">
           <span class="badge-status status-${status}">${status}</span>
           <div class="sev-wrap">
             <div class="sev-label"><span>Severity</span><span>${sev.toFixed(1)}</span></div>
             <div class="sev-bar"><div class="sev-fill ${sevClass}" style="width:${sevPct}%"></div></div>
           </div>
-          <div class="artifact-actions">
-            <button class="btn-icon" title="View Details" onclick="openArtifactDetail(${a.artifact_id})"><i class="bi bi-eye"></i></button>
-            <button class="btn-icon" title="Inspect" onclick="openAnalyzeFor(${a.artifact_id})"><i class="bi bi-cpu"></i></button>
-            <button class="btn-icon" title="Trend" onclick="openTrendFor(${a.artifact_id})"><i class="bi bi-graph-up"></i></button>
-            <button class="btn-icon" title="Export PDF" onclick="exportPdfFor(${a.artifact_id})"><i class="bi bi-file-pdf"></i></button>
-            <button class="btn-icon" title="QR Code" onclick="showArtifactQr(${a.artifact_id}, '${a.name.replace(/'/g,"\\'")}')" ><i class="bi bi-qr-code"></i></button>
-          </div>
+        </div>
+        <div class="artifact-actions">
+          <button class="btn-icon" title="View Details" onclick="openArtifactDetail(${a.artifact_id})"><i class="bi bi-eye"></i></button>
+          <button class="btn-icon" title="AI Inspect" onclick="openAnalyzeFor(${a.artifact_id})"><i class="bi bi-cpu"></i></button>
+          <button class="btn-icon" title="Trend" onclick="openTrendFor(${a.artifact_id})"><i class="bi bi-graph-up"></i></button>
+          <button class="btn-icon" title="PDF" onclick="exportPdfFor(${a.artifact_id})"><i class="bi bi-file-pdf"></i></button>
+          <button class="btn-icon" title="QR Code" onclick="showArtifactQr(${a.artifact_id}, '${a.name.replace(/'/g,"\'")}')"><i class="bi bi-qr-code"></i></button>
         </div>
       </div>
     </div>`;
@@ -1316,35 +1333,118 @@ async function captureFrame() {
 }
 // ── Inspections ───────────────────────────────────────────────────
 async function loadInspections() {
-  const search = document.getElementById('inspSearch')?.value||'';
-  const aid    = document.getElementById('inspArtifactFilter')?.value||'';
+  const tbody = document.getElementById('inspTbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="td-loading">Loading…</td></tr>';
+
+  const search   = document.getElementById('inspSearch')?.value || '';
+  const aid      = document.getElementById('inspArtFilter')?.value || '';
+  const typeF    = document.getElementById('inspTypeFilter')?.value || '';
+  const riskF    = document.getElementById('inspRiskFilter')?.value || '';
+  const dateFrom = document.getElementById('inspDateFrom')?.value || '';
+  const dateTo   = document.getElementById('inspDateTo')?.value || '';
+
   let url = `/api/inspections?search=${encodeURIComponent(search)}`;
   if (aid) url += `&artifact_id=${aid}`;
+
   try {
     const r = await api(url);
-    const insps = await r.json();
+    let insps = await r.json();
+
+    // Client-side filters
+    if (typeF) insps = insps.filter(i => (i.inspection_type||'Routine') === typeF);
+    if (riskF) insps = insps.filter(i => sevToRisk(i.severity_index) === riskF);
+    if (dateFrom) insps = insps.filter(i => i.inspection_date >= dateFrom);
+    if (dateTo)   insps = insps.filter(i => i.inspection_date <= dateTo);
+
+    // Update stat counters
+    const setEl = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+    setEl('insp-total',    insps.length);
+    setEl('insp-critical', insps.filter(i => sevToRisk(i.severity_index) === 'CRITICAL').length);
+    setEl('insp-high',     insps.filter(i => sevToRisk(i.severity_index) === 'HIGH').length);
+    setEl('insp-low',      insps.filter(i => sevToRisk(i.severity_index) === 'LOW').length);
+
+    // Results info
+    const info = document.getElementById('inspResultsInfo');
+    if (info) {
+      const hasFilter = search || aid || typeF || riskF || dateFrom || dateTo;
+      info.textContent = hasFilter
+        ? `Showing ${insps.length} result${insps.length !== 1 ? 's' : ''} with current filters`
+        : `${insps.length} inspection${insps.length !== 1 ? 's' : ''} total`;
+    }
+
     renderInspectionsTable(insps);
   } catch(e) { console.error(e); }
 }
 
+function clearInspFilters() {
+  ['inspSearch','inspTypeFilter','inspRiskFilter','inspDateFrom','inspDateTo'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('inspArtFilter').value = '';
+  loadInspections();
+}
+
 function renderInspectionsTable(insps) {
   const tbody = document.getElementById('inspTbody'); if (!tbody) return;
-  if (!insps.length) { tbody.innerHTML='<tr><td colspan="9" class="loading-cell">No inspections found</td></tr>'; return; }
-  tbody.innerHTML = insps.map(i => `
-    <tr>
-      <td style="color:var(--muted)">#${i.inspection_id}</td>
-      <td><strong>${i.artifact_name||'—'}</strong></td>
-      <td>${i.inspection_date?.slice(0,10)||'—'}</td>
-      <td>${i.inspection_type||'Routine'}</td>
-      <td class="${i.crack_detected?'crack-yes':'crack-no'}">${i.crack_detected?'Yes':'No'}</td>
-      <td>${(parseFloat(i.fading_level||0)*100).toFixed(0)}%</td>
-      <td>${parseFloat(i.severity_index||0).toFixed(1)}</td>
-      <td>${riskBadge(sevToRisk(i.severity_index))}</td>
+  if (!insps.length) {
+    tbody.innerHTML = `<tr><td colspan="9" class="td-loading">
+      <i class="bi bi-clipboard2-x" style="font-size:32px;opacity:.2;display:block;margin-bottom:8px"></i>
+      No inspections found for current filters.
+      <br><button class="btn-sm-outline" style="margin-top:10px" onclick="clearInspFilters()">Clear Filters</button>
+    </td></tr>`;
+    return;
+  }
+
+  const today = new Date().toISOString().slice(0,10);
+  tbody.innerHTML = insps.map(i => {
+    const risk = sevToRisk(i.severity_index);
+    const sev  = parseFloat(i.severity_index||0);
+    const sevColor = sev >= 7 ? '#f87171' : sev >= 5 ? '#fb923c' : sev >= 3 ? '#fbbf24' : '#4ade80';
+    const isToday  = i.inspection_date?.slice(0,10) === today;
+    const fading   = (parseFloat(i.fading_level||0)*100).toFixed(0);
+    const fadingColor = parseInt(fading) >= 80 ? '#f87171' : parseInt(fading) >= 50 ? '#fbbf24' : 'var(--text2)';
+
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px">#${i.inspection_id}</td>
       <td>
-        <button class="btn-icon" title="View report" onclick="viewInspection(${i.inspection_id})"><i class="bi bi-eye"></i></button>
-        <button class="btn-icon" title="Print" onclick="printInspection(${i.inspection_id})"><i class="bi bi-printer"></i></button>
+        <div style="font-weight:600;color:var(--text);font-size:13px">${i.artifact_name||'—'}</div>
       </td>
-    </tr>`).join('');
+      <td>
+        <div style="font-size:12px;color:var(--text2)">${i.inspection_date?.slice(0,10)||'—'}</div>
+        ${isToday ? '<div style="font-size:10px;color:#4ade80;font-weight:600">Today</div>' : ''}
+      </td>
+      <td>
+        <span style="font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600;
+          background:${i.inspection_type==='Emergency'?'rgba(220,38,38,.12)':'var(--bg2)'};
+          color:${i.inspection_type==='Emergency'?'#f87171':'var(--text2)'}">
+          ${i.inspection_type||'Routine'}
+        </span>
+      </td>
+      <td>
+        <span class="${i.crack_detected?'crack-yes':'crack-no'}" style="font-weight:600;font-size:12px">
+          ${i.crack_detected
+            ? '<i class="bi bi-exclamation-circle-fill" style="margin-right:3px"></i>Yes'
+            : '<i class="bi bi-check-circle-fill" style="margin-right:3px"></i>No'}
+        </span>
+      </td>
+      <td style="font-size:12px;color:${fadingColor};font-weight:600">${fading}%</td>
+      <td>
+        <span style="font-size:13px;font-weight:700;color:${sevColor}">${sev.toFixed(1)}</span>
+        <span style="font-size:10px;color:var(--muted)">/10</span>
+      </td>
+      <td>${riskBadge(risk)}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn-icon" title="View report" onclick="viewInspection(${i.inspection_id})">
+            <i class="bi bi-eye"></i>
+          </button>
+          <button class="btn-icon" title="Print" onclick="printInspection(${i.inspection_id})">
+            <i class="bi bi-printer"></i>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 async function viewInspection(id) {

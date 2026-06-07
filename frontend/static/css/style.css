@@ -844,11 +844,17 @@ textarea.finput{resize:vertical;min-height:80px}
    ════════════════════════════════════════════════════════════════ */
 
 /* Status/condition badges */
-.badge-status{display:inline-flex;align-items:center;padding:4px 11px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.5px;flex-shrink:0;text-transform:uppercase}
-.status-Good    {background:var(--green-a);color:#4ade80}
-.status-Fair    {background:var(--amber-a);color:#fbbf24}
-.status-Poor    {background:rgba(234,88,12,.18);color:#fb923c}
-.status-Critical{background:var(--red-a);color:#f87171}
+.badge-status{
+  display:inline-flex;align-items:center;
+  padding:3px 9px;border-radius:6px;
+  font-size:9px;font-weight:800;letter-spacing:1px;
+  flex-shrink:0;text-transform:uppercase;
+  border:1px solid transparent;
+}
+.status-Good    {background:var(--green-a);color:#4ade80;border-color:rgba(22,163,74,.25)}
+.status-Fair    {background:var(--amber-a);color:#fbbf24;border-color:rgba(217,119,6,.25)}
+.status-Poor    {background:rgba(234,88,12,.18);color:#fb923c;border-color:rgba(234,88,12,.25)}
+.status-Critical{background:var(--red-a);color:#f87171;border-color:rgba(220,38,38,.25)}
 .crack-yes{color:#f87171;font-weight:700}
 .crack-no {color:#4ade80}
 
@@ -937,34 +943,69 @@ textarea.finput{resize:vertical;min-height:80px}
 .capture-result img{border-radius:var(--radius);width:100%;max-height:240px;object-fit:cover}
 
 /* Artifact cards */
-.artifact-card-img{height:200px;background:var(--bg2);display:flex;
-  align-items:center;justify-content:center;overflow:hidden;position:relative;flex-shrink:0}
-.artifact-card-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease;display:block}
+.artifact-card-img{
+  height:210px;background:var(--bg2);display:flex;
+  align-items:center;justify-content:center;overflow:hidden;
+  position:relative;flex-shrink:0;
+}
+.artifact-card-img img{
+  width:100%;height:100%;object-fit:cover;
+  transition:transform .5s ease;display:block;
+}
 .artifact-card:hover .artifact-card-img img{transform:scale(1.07)}
 .artifact-card-img .no-img{font-size:52px;color:var(--border);opacity:.4}
-.artifact-card-body{padding:16px}
+
+/* Card body */
+.artifact-card-body{padding:14px 16px 0}
 .artifact-name{
   font-family:'Cormorant Garamond',serif;
-  font-size:15px;font-weight:600;color:var(--text);
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-  overflow:hidden;line-height:1.35;margin-bottom:6px;min-height:2.7em;
-  transition:color var(--t);
+  font-size:16px;font-weight:700;color:var(--text);
+  display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;
+  overflow:hidden;line-height:1.3;margin-bottom:5px;
+  transition:color var(--t);cursor:pointer;
 }
-.artifact-meta{font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.7}
+.artifact-name:hover{color:var(--accent)}
+.artifact-meta{font-size:11px;color:var(--text2);margin-bottom:0;line-height:1.8}
 .artifact-meta i{margin-right:4px;color:var(--muted)}
+
+/* Footer — clean 2-section design */
 .artifact-card-footer{
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  align-items:center;
-  padding:10px 14px;
-  border-top:1px solid var(--border);
-  gap:8px;
+  display:flex;flex-direction:column;
+  padding:10px 16px 12px;
+  gap:10px;margin-top:10px;
 }
-.artifact-actions{display:flex;gap:2px;flex-shrink:0}
-.sev-wrap{min-width:0}
-.sev-label{font-size:11px;color:var(--text2);margin-bottom:5px;display:flex;justify-content:space-between;font-weight:600;letter-spacing:.2px}
-.sev-bar{height:4px;background:var(--border);border-radius:3px;overflow:hidden}
+.artifact-card-footer-top{
+  display:flex;align-items:center;gap:8px;
+}
+.sev-wrap{flex:1;min-width:0}
+.sev-label{
+  font-size:10px;color:var(--muted);margin-bottom:3px;
+  display:flex;justify-content:space-between;
+  font-weight:600;letter-spacing:.5px;text-transform:uppercase;
+}
+.sev-label span:last-child{
+  color:var(--text);font-size:11px;
+}
+.sev-bar{height:3px;background:var(--border);border-radius:3px;overflow:hidden}
 .sev-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+/* Action buttons row */
+.artifact-actions{
+  display:flex;gap:2px;
+  justify-content:space-between;
+  background:var(--bg2);
+  border-radius:8px;
+  padding:3px;
+}
+.artifact-actions .btn-icon{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  border-radius:6px;padding:6px 4px;font-size:13px;
+  color:var(--muted);transition:all var(--t);
+}
+.artifact-actions .btn-icon:hover{
+  background:var(--card2);color:var(--accent);
+  transform:translateY(-1px);
+}
 .sev-0,.sev-1,.sev-2,.sev-3{background:var(--green)}
 .sev-4,.sev-5{background:var(--accent)}
 .sev-6,.sev-7{background:var(--amber)}

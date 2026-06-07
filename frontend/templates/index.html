@@ -444,16 +444,88 @@
 
   <!-- ── INSPECTIONS ─────────────────────────────────────────── -->
   <section class="content-section" id="section-inspections">
-    <div class="toolbar">
-      <input type="text" class="search-input" id="inspSearch" placeholder="Search inspections…" oninput="loadInspections()"/>
-      <select class="fselect" id="inspArtFilter" onchange="loadInspections()" style="max-width:220px"><option value="">All Artifacts</option></select>
-      <button class="btn-outline" onclick="exportExcel()" data-permission="can_export_excel"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-      <button class="btn-outline" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(37,99,235,.15);color:#60a5fa;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="bi bi-clipboard2-pulse"></i></div>
+        <div><div style="font-size:24px;font-weight:700;color:var(--text);line-height:1" id="insp-total">—</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Total</div></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(220,38,38,.15);color:#f87171;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="bi bi-exclamation-octagon"></i></div>
+        <div><div style="font-size:24px;font-weight:700;color:var(--text);line-height:1" id="insp-critical">—</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Critical</div></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(234,88,12,.15);color:#fb923c;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="bi bi-exclamation-triangle"></i></div>
+        <div><div style="font-size:24px;font-weight:700;color:var(--text);line-height:1" id="insp-high">—</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">High Risk</div></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(22,163,74,.15);color:#4ade80;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="bi bi-shield-check"></i></div>
+        <div><div style="font-size:24px;font-weight:700;color:var(--text);line-height:1" id="insp-low">—</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px">Low Risk</div></div>
+      </div>
     </div>
+
+    <!-- Filters -->
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;
+      background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px">
+      <i class="bi bi-search" style="color:var(--muted);font-size:13px"></i>
+      <input type="text" class="finput" id="inspSearch" placeholder="Search artifact, type, notes…"
+        oninput="loadInspections()" style="flex:1;min-width:180px;border:none;background:none;padding:0;height:auto"/>
+      <div style="width:1px;height:24px;background:var(--border)"></div>
+      <select class="fselect" id="inspArtFilter" onchange="loadInspections()" style="max-width:200px;border:none;background:none;padding:0">
+        <option value="">All Artifacts</option>
+      </select>
+      <div style="width:1px;height:24px;background:var(--border)"></div>
+      <select class="fselect" id="inspTypeFilter" onchange="loadInspections()" style="max-width:140px;border:none;background:none;padding:0">
+        <option value="">All Types</option>
+        <option value="Routine">Routine</option>
+        <option value="Emergency">Emergency</option>
+        <option value="Pre-Shipment">Pre-Shipment</option>
+        <option value="Post-Restoration">Post-Restoration</option>
+      </select>
+      <div style="width:1px;height:24px;background:var(--border)"></div>
+      <select class="fselect" id="inspRiskFilter" onchange="loadInspections()" style="max-width:130px;border:none;background:none;padding:0">
+        <option value="">All Risks</option>
+        <option value="CRITICAL">Critical</option>
+        <option value="HIGH">High</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="LOW">Low</option>
+      </select>
+      <div style="width:1px;height:24px;background:var(--border)"></div>
+      <label style="font-size:11px;color:var(--muted);white-space:nowrap">From</label>
+      <input type="date" class="finput" id="inspDateFrom" onchange="loadInspections()"
+        style="max-width:140px;font-size:12px"/>
+      <label style="font-size:11px;color:var(--muted);white-space:nowrap">To</label>
+      <input type="date" class="finput" id="inspDateTo" onchange="loadInspections()"
+        style="max-width:140px;font-size:12px"/>
+      <button class="btn-outline" onclick="clearInspFilters()"
+        style="height:32px;padding:0 12px;font-size:11px;white-space:nowrap">
+        <i class="bi bi-x-circle"></i> Clear
+      </button>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn-outline" onclick="exportExcel()" data-permission="can_export_excel"
+          style="height:32px;padding:0 12px;font-size:12px">
+          <i class="bi bi-file-earmark-excel"></i> Excel
+        </button>
+        <button class="btn-outline" onclick="window.print()"
+          style="height:32px;padding:0 12px;font-size:12px">
+          <i class="bi bi-printer"></i> Print
+        </button>
+      </div>
+    </div>
+
+    <!-- Results count -->
+    <div id="inspResultsInfo" style="font-size:12px;color:var(--muted);margin-bottom:10px;padding:0 4px"></div>
+
+    <!-- Table -->
     <div class="table-card"><div class="table-scroll"><table class="dtable">
-      <thead><tr><th>ID</th><th>Artifact</th><th>Date</th><th>Type</th><th>Crack</th><th>Fading</th><th>Severity</th><th>Risk</th><th>Actions</th></tr></thead>
+      <thead><tr>
+        <th>ID</th><th>Artifact</th><th>Date</th><th>Type</th>
+        <th>Crack</th><th>Fading</th><th>Severity</th><th>Risk</th><th>Actions</th>
+      </tr></thead>
       <tbody id="inspTbody"><tr><td colspan="9" class="td-loading">Loading…</td></tr></tbody>
     </table></div></div>
+
   </section>
 
   <!-- ── GALLERY ─────────────────────────────────────────────── -->
