@@ -223,6 +223,7 @@ function showSection(name) {
   if (name === 'users')       loadUsers();
   if (name === 'reports')     { populateAllReportSelects(); loadReportMonthly(); }
   if (name === 'analyze')     populateArtifactSelect('analyzeArtifact');
+  if (name === 'compare')     { initCompare(); populateArtifactSelect('compareArtifact'); }
   if (name === 'video')       { populateArtifactSelect('videoArtifact'); populateArtifactSelect('cameraArtifact'); }
   if (name === 'import')  loadIeArtifactSelect();
   if (name === 'audit')   loadAuditLogs(1);
@@ -900,6 +901,131 @@ function renderAnalysisResult(d) {
 }
 
 // ── Compare Images ────────────────────────────────────────────────
+let _compareSelections = {}; // { imageId: 'before'|'after' }
+
+async function loadCompareArtifactImages() {
+  const aid = document.getElementById('compareArtifact')?.value;
+  const picker = document.getElementById('compareImagePicker');
+  const grid = document.getElementById('compareImageGrid');
+  if (!aid) { if(picker) picker.style.display='none'; return; }
+  if(picker) picker.style.display = 'block';
+  _compareSelections = {};
+  grid.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center;grid-column:1/-1"><div class="spinner" style="width:18px;height:18px;border-width:2px;display:inline-block;margin-bottom:8px"></div><br>Loading images…</div>';
+
+  try {
+    const r = await api(`/api/artifacts/${aid}/gallery`);
+    const images = await r.json();
+    if (!images.length) {
+      grid.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center;grid-column:1/-1"><i class="bi bi-image" style="font-size:28px;opacity:.2;display:block;margin-bottom:8px"></i>No images found for this artifact.<br>Upload images first via AI Analyze.</div>';
+      return;
+    }
+    grid.innerHTML = images.map((img, idx) => `
+      <div id="cmpImg_${idx}" onclick="toggleCompareImage(${idx},'${imgUrl(img.file_path)}')"
+        style="position:relative;border-radius:8px;overflow:hidden;cursor:pointer;
+          border:2px solid transparent;transition:all .2s;aspect-ratio:1"
+        title="Click once: Before | Click twice: After | Click again: Deselect">
+        <img src="${imgUrl(img.file_path)}" loading="lazy"
+          style="width:100%;height:100%;object-fit:cover;display:block"
+          onerror="this.src='/static/images/no-img.svg'"/>
+        <div id="cmpBadge_${idx}" style="position:absolute;inset:0;display:flex;align-items:center;
+          justify-content:center;background:rgba(0,0,0,0);transition:all .2s;
+          font-size:11px;font-weight:700;letter-spacing:.5px"></div>
+        <div style="position:absolute;bottom:4px;left:4px;right:4px;font-size:9px;
+          color:rgba(255,255,255,.7);text-align:center;text-transform:uppercase;letter-spacing:.5px">
+          ${img.image_type||'Standard'}
+        </div>
+      </div>`).join('');
+    // Store image urls for reference
+    grid._images = images;
+  } catch(e) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center;grid-column:1/-1">Error loading images</div>';
+  }
+}
+
+function toggleCompareImage(idx, url) {
+  const current = _compareSelections[idx];
+  const card  = document.getElementById(`cmpImg_${idx}`);
+  const badge = document.getElementById(`cmpBadge_${idx}`);
+
+  // Check global state — what's already assigned
+  const hasGlobalBefore = Object.values(_compareSelections).includes('before');
+  const hasGlobalAfter  = Object.values(_compareSelections).includes('after');
+
+  if (!current) {
+    // This image is unselected — assign to Before if no Before yet, else After
+    if (!hasGlobalBefore) {
+      // Assign as Before
+      _compareSelections[idx] = 'before';
+      card.style.borderColor = '#60a5fa';
+      card.style.boxShadow = '0 0 0 3px rgba(96,165,250,.4)';
+      badge.style.background = 'rgba(37,99,235,.75)';
+      badge.innerHTML = '<i class="bi bi-clock-history" style="margin-right:3px"></i>BEFORE';
+      setComparePreviewFromUrl('before', url);
+    } else if (!hasGlobalAfter) {
+      // Assign as After
+      _compareSelections[idx] = 'after';
+      card.style.borderColor = '#4ade80';
+      card.style.boxShadow = '0 0 0 3px rgba(74,222,128,.4)';
+      badge.style.background = 'rgba(22,163,74,.75)';
+      badge.innerHTML = '<i class="bi bi-calendar-check" style="margin-right:3px"></i>AFTER';
+      setComparePreviewFromUrl('after', url);
+    } else {
+      // Both already selected — inform user
+      toast('Both Before and After already selected. Click a selected image to deselect it first.', 'warning');
+      return;
+    }
+  } else {
+    // This image is already selected — deselect it
+    const role = current;
+    _compareSelections[idx] = null;
+    card.style.borderColor = 'transparent';
+    card.style.boxShadow = '';
+    badge.style.background = 'rgba(0,0,0,0)';
+    badge.innerHTML = '';
+    clearGalleryCompare(role);
+  }
+  updateCompareStatus();
+}
+
+function setComparePreviewFromUrl(which, url) {
+  const img = document.getElementById(which + 'PrevGallery');
+  if (img) {
+    img.src = url;
+    img.dataset.galleryUrl = url;
+  }
+  // Show gallery previews section only (hide manual upload drop zones)
+  const galleryPreviews = document.getElementById('compareGalleryPreviews');
+  if (galleryPreviews) galleryPreviews.style.display = 'block';
+  // Make sure manual upload section is collapsed
+  const manualUpload = document.getElementById('compareManualUpload');
+  if (manualUpload) manualUpload.style.display = 'none';
+  updateCompareStatus();
+}
+
+function clearGalleryCompare(which) {
+  const img = document.getElementById(which + 'PrevGallery');
+  if (img) { img.src = ''; img.dataset.galleryUrl = ''; }
+  // Deselect in grid
+  Object.keys(_compareSelections).forEach(k => {
+    if (_compareSelections[k] === which) {
+      _compareSelections[k] = null;
+      const card  = document.getElementById(`cmpImg_${k}`);
+      const badge = document.getElementById(`cmpBadge_${k}`);
+      if (card)  { card.style.borderColor='transparent'; card.style.boxShadow=''; }
+      if (badge) { badge.style.background='rgba(0,0,0,0)'; badge.innerHTML=''; }
+    }
+  });
+  // Hide previews if both cleared
+  const bUrl = document.getElementById('beforePrevGallery')?.dataset.galleryUrl;
+  const aUrl = document.getElementById('afterPrevGallery')?.dataset.galleryUrl;
+  if (!bUrl && !aUrl) {
+    const galleryPreviews = document.getElementById('compareGalleryPreviews');
+    if (galleryPreviews) galleryPreviews.style.display = 'none';
+  }
+  updateCompareStatus();
+}
+
+// ── Compare Images ────────────────────────────────────────────────
 // Initialise compare drop zones after DOM is ready
 function initCompare() {
   const beforeInput = document.getElementById('beforeInput');
@@ -958,21 +1084,30 @@ function clearCompare(which) {
 }
 
 function updateCompareStatus() {
-  const bf = document.getElementById('beforeInput').files[0];
-  const af = document.getElementById('afterInput').files[0];
+  const bf = document.getElementById('beforeInput')?.files[0];
+  const af = document.getElementById('afterInput')?.files[0];
+  const beforeUrl = document.getElementById('beforePrevGallery')?.dataset.galleryUrl;
+  const afterUrl  = document.getElementById('afterPrevGallery')?.dataset.galleryUrl;
+  const hasB = bf || beforeUrl;
+  const hasA = af || afterUrl;
   const status = document.getElementById('compareStatus');
-  if (!bf && !af) { status.textContent = ''; return; }
-  if (bf && !af)  { status.textContent = '✅ Before image loaded — now upload the After image'; return; }
-  if (!bf && af)  { status.textContent = '✅ After image loaded — now upload the Before image'; return; }
-  status.textContent = '✅ Both images ready — click Compare Images';
-  status.style.color = '#4ade80';
+  if (!status) return;
+  if (!hasB && !hasA) { status.textContent = ''; return; }
+  if (hasB && !hasA)  { status.innerHTML = '<i class="bi bi-check-circle-fill" style="color:#4ade80;margin-right:4px"></i>Before ready — now select the After image'; return; }
+  if (!hasB && hasA)  { status.innerHTML = '<i class="bi bi-check-circle-fill" style="color:#4ade80;margin-right:4px"></i>After ready — now select the Before image'; return; }
+  status.innerHTML = '<i class="bi bi-check-circle-fill" style="color:#4ade80;margin-right:4px"></i><strong style="color:#4ade80">Both images ready</strong> — click Compare Images';
 }
 
 async function runCompare() {
-  const bf = document.getElementById('beforeInput').files[0];
-  const af = document.getElementById('afterInput').files[0];
-  if (!bf) { toast('Upload the BEFORE image first', 'warning'); return; }
-  if (!af) { toast('Upload the AFTER image first', 'warning'); return; }
+  const beforeGalleryImg = document.getElementById('beforePrevGallery');
+  const afterGalleryImg  = document.getElementById('afterPrevGallery');
+  const bf = document.getElementById('beforeInput')?.files[0];
+  const af = document.getElementById('afterInput')?.files[0];
+  const beforeUrl = beforeGalleryImg?.dataset.galleryUrl;
+  const afterUrl  = afterGalleryImg?.dataset.galleryUrl;
+
+  if (!bf && !beforeUrl) { toast('Select or upload the BEFORE image first', 'warning'); return; }
+  if (!af && !afterUrl)  { toast('Select or upload the AFTER image first', 'warning'); return; }
 
   const btn    = document.getElementById('compareBtn');
   const loader = document.getElementById('compareLoader');
@@ -981,19 +1116,51 @@ async function runCompare() {
   loader.classList.remove('d-none');
 
   const fd = new FormData();
-  fd.append('before', bf);
-  fd.append('after',  af);
+
+  // Helper: fetch a URL and return as Blob file
+  async function urlToFile(url, filename) {
+    const resp = await fetch(url, { credentials:'include' });
+    const blob = await resp.blob();
+    return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+  }
+
+  // Use file upload if available, else fetch from gallery URL
+  const beforeFile = bf || (beforeUrl ? await urlToFile(beforeUrl, 'before.jpg') : null);
+  const afterFile  = af || (afterUrl  ? await urlToFile(afterUrl,  'after.jpg')  : null);
+
+  if (!beforeFile) { toast('Could not load Before image', 'error'); return; }
+  if (!afterFile)  { toast('Could not load After image', 'error'); return; }
+
+  fd.append('before', beforeFile);
+  fd.append('after',  afterFile);
 
   try {
     const r = await fetch('/api/compare', { method:'POST', body:fd, credentials:'include' });
     const d = await r.json();
-    if (!r.ok) { toast(d.error || 'Comparison failed', 'error'); return; }
+    if (!r.ok) {
+      toast(d.error || 'Comparison failed', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-arrow-left-right"></i> Compare Images';
+      loader.classList.add('d-none');
+      return;
+    }
 
-    // Show diff map
+    // Show diff map — update both possible diffWrap elements
+    const diffImg = d.diff_image_b64
+      ? `<img src="data:image/jpeg;base64,${d.diff_image_b64}" style="width:100%;border-radius:8px;display:block" alt="Difference Map"/>`
+      : `<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No diff image returned</p>`;
+
+    // Make sure gallery previews section is visible
+    const galleryPreviews = document.getElementById('compareGalleryPreviews');
+    if (galleryPreviews) galleryPreviews.style.display = 'block';
+
+    // Update the visible diff wrap (gallery preview section)
     const diffWrap = document.getElementById('diffWrap');
-    diffWrap.innerHTML = d.diff_image_b64
-      ? `<img src="data:image/jpeg;base64,${d.diff_image_b64}" style="width:100%;border-radius:10px;display:block" alt="Difference Map"/>`
-      : `<p style="color:#64748b;font-size:13px">No diff image returned</p>`;
+    if (diffWrap) diffWrap.innerHTML = diffImg;
+
+    // Also update manual upload diff wrap if visible
+    const diffWrapManual = document.getElementById('diffWrapManual');
+    if (diffWrapManual) diffWrapManual.innerHTML = diffImg;
 
     // Show result panel
     const panel = document.getElementById('compareResultPanel');
@@ -1367,9 +1534,15 @@ async function loadInspections() {
     const info = document.getElementById('inspResultsInfo');
     if (info) {
       const hasFilter = search || aid || typeF || riskF || dateFrom || dateTo;
-      info.textContent = hasFilter
-        ? `Showing ${insps.length} result${insps.length !== 1 ? 's' : ''} with current filters`
-        : `${insps.length} inspection${insps.length !== 1 ? 's' : ''} total`;
+      if (hasFilter) {
+        info.innerHTML = `<i class="bi bi-funnel-fill" style="color:var(--accent)"></i>
+          <strong style="color:var(--text)">${insps.length}</strong>
+          result${insps.length !== 1 ? 's' : ''} match your filters`;
+      } else {
+        info.innerHTML = `<i class="bi bi-clipboard2-pulse" style="color:var(--muted)"></i>
+          <strong style="color:var(--text)">${insps.length}</strong>
+          inspection${insps.length !== 1 ? 's' : ''} total`;
+      }
     }
 
     renderInspectionsTable(insps);
@@ -1943,7 +2116,13 @@ function renderAlerts() {
           <div class="alert-card-inner">
             <div class="alert-header">
               ${!a.is_read ? `<div class="alert-unread-dot"></div>` : ''}
-              <div class="alert-artifact"><i class="bi bi-archive"></i>${a.artifact_name}</div>
+              <div class="alert-artifact" onclick="navigateToArtifact(${a.artifact_id}, '${(a.artifact_name||'').replace(/'/g,"\'")}')"
+                style="cursor:pointer;transition:color .2s"
+                onmouseover="this.style.color='var(--accent)'"
+                onmouseout="this.style.color=''">
+                <i class="bi bi-archive"></i>${a.artifact_name}
+                <i class="bi bi-arrow-right" style="font-size:10px;margin-left:4px;opacity:.5"></i>
+              </div>
               <span class="alert-type-badge badge-risk risk-${a.severity}">${a.severity}</span>
             </div>
             <div class="alert-message">${a.alert_message}</div>
@@ -1958,12 +2137,69 @@ function renderAlerts() {
                   ? `<button class="btn-read" onclick="markRead(${a.alert_id})"><i class="bi bi-check"></i> Mark read</button>`
                   : `<span class="btn-read-done"><i class="bi bi-check-circle-fill" style="color:var(--green)"></i> Read</span>`
                 }
-                <button class="btn-read" onclick="openTrendFor(${a.artifact_id})"><i class="bi bi-graph-up"></i> Trend</button>
+                <button class="btn-read" onclick="openTrendFor(${a.artifact_id})">
+                  <i class="bi bi-graph-up"></i> Trend
+                </button>
+                <button class="btn-read" style="color:var(--accent);border-color:rgba(201,149,26,.3)"
+                  onclick="navigateToArtifact(${a.artifact_id}, '${(a.artifact_name||'').replace(/'/g,"\\'")}')">
+                  <i class="bi bi-box-arrow-up-right"></i> View Artifact
+                </button>
               </div>
             </div>
           </div>
         </div>`).join('')}
     </div>`).join('');
+}
+
+function navigateToArtifact(artifactId, artifactName) {
+  // Close any open modals first
+  document.querySelectorAll('.modal.show').forEach(m => {
+    bootstrap.Modal.getInstance(m)?.hide();
+  });
+
+  // Navigate to artifacts section
+  showSection('artifacts');
+
+  // Wait for section to render then find and highlight the card
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.artifact-card');
+    let found = false;
+    cards.forEach(card => {
+      const id = card.dataset.id;
+      if (parseInt(id) === artifactId && !found) {
+        found = true;
+        card.scrollIntoView({ behavior:'smooth', block:'center' });
+        // Gold highlight pulse
+        card.style.transition = 'box-shadow .3s, border-color .3s';
+        card.style.boxShadow = '0 0 0 3px rgba(201,149,26,.6), 0 20px 50px rgba(0,0,0,.6)';
+        card.style.borderColor = 'rgba(201,149,26,.8)';
+        setTimeout(() => {
+          card.style.boxShadow = '';
+          card.style.borderColor = '';
+        }, 2500);
+      }
+    });
+
+    if (!found) {
+      // Artifact might not be visible due to search filter — clear and search by name
+      const searchEl = document.getElementById('artifactSearch');
+      if (searchEl) {
+        searchEl.value = artifactName;
+        searchEl.dispatchEvent(new Event('input'));
+        setTimeout(() => {
+          const cards2 = document.querySelectorAll('.artifact-card');
+          cards2.forEach(card => {
+            if (parseInt(card.dataset.id) === artifactId) {
+              card.scrollIntoView({ behavior:'smooth', block:'center' });
+              card.style.boxShadow = '0 0 0 3px rgba(201,149,26,.6)';
+              setTimeout(() => card.style.boxShadow = '', 2500);
+            }
+          });
+        }, 400);
+      }
+    }
+    toast(`Navigated to ${artifactName}`, 'success');
+  }, 300);
 }
 
 function formatDateLabel(dateStr) {
