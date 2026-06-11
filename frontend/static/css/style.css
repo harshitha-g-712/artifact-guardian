@@ -199,17 +199,29 @@ body::after{
   min-width:20px;text-align:center;
 }
 
-.sidebar-footer{padding:16px 22px;border-top:1px solid var(--border);flex-shrink:0}
+.sidebar-footer{padding:0;border-top:none;flex-shrink:0}
 .btn-logout{
   width:100%;
-  background:transparent;color:var(--muted);
-  border:1px solid var(--border);
-  padding:10px;border-radius:var(--radius-sm);
-  font-size:13px;font-weight:500;
-  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:transparent;
+  color:var(--muted);
+  border:none;
+  border-top:1px solid var(--border);
+  padding:14px 16px;
+  border-radius:0;
+  font-size:12px;font-weight:500;
+  display:flex;align-items:center;
+  justify-content:flex-start;
+  gap:8px;
   transition:all var(--t);
+  opacity:.65;
+  letter-spacing:.2px;
 }
-.btn-logout:hover{background:var(--red-a);color:var(--red);border-color:rgba(224,53,53,.3)}
+.btn-logout:hover{
+  background:rgba(220,38,38,.06);
+  color:var(--red);
+  opacity:1;
+  padding-left:20px;
+}
 
 /* ════════════════════════════════════════════════════════════════
    TOPBAR

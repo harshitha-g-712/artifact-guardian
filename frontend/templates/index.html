@@ -239,148 +239,105 @@
     </div>
 
     <!-- Step 3: Preview + Compare -->
+    <!-- Unified Preview + Compare panel -->
     <div id="compareStep3" style="margin-bottom:16px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
-        padding:12px 24px;margin-bottom:16px;display:flex;align-items:center;gap:12px;cursor:pointer"
-        onclick="const m=document.getElementById('compareManualUpload');m.style.display=m.style.display==='none'?'block':'none'">
-        <i class="bi bi-upload" style="color:var(--muted);font-size:13px"></i>
-        <span style="font-size:12px;color:var(--muted)">Or upload images manually</span>
-        <i class="bi bi-chevron-down" style="color:var(--muted);margin-left:auto;font-size:11px"></i>
-      </div>
 
-      <!-- Manual upload (hidden by default) -->
-      <div id="compareManualUpload" style="display:none;margin-bottom:16px">
-        <div class="compare-grid">
-          <!-- BEFORE -->
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#60a5fa">
-                <i class="bi bi-clock-history" style="margin-right:4px"></i>Before Image
-              </span>
-              <span style="font-size:10px;color:var(--muted)">Older / original</span>
-            </div>
-            <div style="padding:14px">
-              <div class="drop-zone compare-drop" id="beforeZone" style="border-radius:8px;min-height:160px">
-                <i class="bi bi-cloud-arrow-up" style="font-size:28px;color:var(--muted);display:block;margin-bottom:8px"></i>
-                <p style="margin:0 0 4px;font-weight:600;color:var(--text2);font-size:13px">Drop image here</p>
-                <small style="color:var(--muted);font-size:11px">PNG · JPG · WEBP</small>
-              </div>
-              <div id="beforePrevWrap" class="d-none" style="position:relative;margin-top:10px">
-                <img id="beforePrev" class="compare-img" src="" alt="before" style="border-radius:8px;width:100%;display:block"/>
-                <button onclick="clearCompare('before')" style="position:absolute;top:8px;right:8px;
-                  background:rgba(0,0,0,.75);color:#fff;border:none;border-radius:50%;
-                  width:28px;height:28px;font-size:13px;cursor:pointer;display:flex;
-                  align-items:center;justify-content:center;transition:background .2s"
-                  onmouseover="this.style.background='rgba(220,38,38,.85)'"
-                  onmouseout="this.style.background='rgba(0,0,0,.75)'">
-                  <i class="bi bi-x-lg"></i>
-                </button>
-              </div>
-              <div class="compare-filename" id="beforeName" style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center"></div>
-            </div>
+      <!-- Single set of Before / After / Diff panels -->
+      <div class="compare-grid" style="margin-bottom:16px" id="comparePreviewGrid">
+
+        <!-- BEFORE -->
+        <div style="background:var(--card);border:2px solid #60a5fa;border-radius:var(--radius);overflow:hidden">
+          <div style="padding:10px 16px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#60a5fa">
+              <i class="bi bi-clock-history" style="margin-right:4px"></i>Before Image
+            </span>
+            <span style="font-size:10px;color:var(--muted)">Older / original</span>
           </div>
-
-          <!-- AFTER -->
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4ade80">
-                <i class="bi bi-calendar-check" style="margin-right:4px"></i>After Image
-              </span>
-              <span style="font-size:10px;color:var(--muted)">Recent / current</span>
+          <div style="padding:14px">
+            <div class="drop-zone compare-drop" id="beforeZone"
+              style="border-radius:8px;min-height:180px;display:flex;flex-direction:column;
+                align-items:center;justify-content:center;text-align:center">
+              <i class="bi bi-cloud-arrow-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
+              <p style="margin:0 0 4px;font-weight:600;color:var(--text2);font-size:13px">Click or drop image here</p>
+              <small style="color:var(--muted);font-size:11px">PNG · JPG · WEBP</small>
+              <div style="margin-top:12px;font-size:11px;color:var(--muted)">— or pick from gallery above —</div>
             </div>
-            <div style="padding:14px">
-              <div class="drop-zone compare-drop" id="afterZone" style="border-radius:8px;min-height:160px">
-                <i class="bi bi-cloud-arrow-up" style="font-size:28px;color:var(--muted);display:block;margin-bottom:8px"></i>
-                <p style="margin:0 0 4px;font-weight:600;color:var(--text2);font-size:13px">Drop image here</p>
-                <small style="color:var(--muted);font-size:11px">PNG · JPG · WEBP</small>
-              </div>
-              <div id="afterPrevWrap" class="d-none" style="position:relative;margin-top:10px">
-                <img id="afterPrev" class="compare-img" src="" alt="after" style="border-radius:8px;width:100%;display:block"/>
-                <button onclick="clearCompare('after')" style="position:absolute;top:8px;right:8px;
-                  background:rgba(0,0,0,.75);color:#fff;border:none;border-radius:50%;
-                  width:28px;height:28px;font-size:13px;cursor:pointer;display:flex;
-                  align-items:center;justify-content:center;transition:background .2s"
-                  onmouseover="this.style.background='rgba(220,38,38,.85)'"
-                  onmouseout="this.style.background='rgba(0,0,0,.75)'">
-                  <i class="bi bi-x-lg"></i>
-                </button>
-              </div>
-              <div class="compare-filename" id="afterName" style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center"></div>
+            <div id="beforePrevWrap" class="d-none" style="position:relative">
+              <img id="beforePrev" class="compare-img" src="" alt="before"
+                style="border-radius:8px;width:100%;display:block"/>
+              <button onclick="clearCompare('before')"
+                style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.75);
+                  color:#fff;border:none;border-radius:50%;width:30px;height:30px;
+                  font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+                  transition:background .2s"
+                onmouseover="this.style.background='rgba(220,38,38,.85)'"
+                onmouseout="this.style.background='rgba(0,0,0,.75)'">
+                <i class="bi bi-x-lg"></i>
+              </button>
             </div>
+            <div id="beforeName" style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center"></div>
+            <input type="file" id="beforeInput" accept="image/*" style="display:none"/>
           </div>
+        </div>
 
-          <!-- DIFF MAP -->
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#a78bfa">
-                <i class="bi bi-activity" style="margin-right:4px"></i>Difference Map
-              </span>
-              <span style="font-size:10px;color:var(--muted)">AI-generated heatmap</span>
+        <!-- AFTER -->
+        <div style="background:var(--card);border:2px solid #4ade80;border-radius:var(--radius);overflow:hidden">
+          <div style="padding:10px 16px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4ade80">
+              <i class="bi bi-calendar-check" style="margin-right:4px"></i>After Image
+            </span>
+            <span style="font-size:10px;color:var(--muted)">Recent / current</span>
+          </div>
+          <div style="padding:14px">
+            <div class="drop-zone compare-drop" id="afterZone"
+              style="border-radius:8px;min-height:180px;display:flex;flex-direction:column;
+                align-items:center;justify-content:center;text-align:center">
+              <i class="bi bi-cloud-arrow-up" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px"></i>
+              <p style="margin:0 0 4px;font-weight:600;color:var(--text2);font-size:13px">Click or drop image here</p>
+              <small style="color:var(--muted);font-size:11px">PNG · JPG · WEBP</small>
+              <div style="margin-top:12px;font-size:11px;color:var(--muted)">— or pick from gallery above —</div>
             </div>
-            <div style="padding:14px">
-              <div id="diffWrapManual" style="min-height:160px;border:2px dashed var(--border);border-radius:8px;
-                display:flex;flex-direction:column;align-items:center;justify-content:center;
-                padding:24px;text-align:center;background:var(--bg2)">
-                <i class="bi bi-layers" style="font-size:32px;color:var(--border-l);margin-bottom:10px"></i>
-                <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:4px">Heatmap will appear here</div>
-                <div style="font-size:11px;color:var(--muted)">Select or upload both images, then compare</div>
-              </div>
+            <div id="afterPrevWrap" class="d-none" style="position:relative">
+              <img id="afterPrev" class="compare-img" src="" alt="after"
+                style="border-radius:8px;width:100%;display:block"/>
+              <button onclick="clearCompare('after')"
+                style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.75);
+                  color:#fff;border:none;border-radius:50%;width:30px;height:30px;
+                  font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+                  transition:background .2s"
+                onmouseover="this.style.background='rgba(220,38,38,.85)'"
+                onmouseout="this.style.background='rgba(0,0,0,.75)'">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div id="afterName" style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center"></div>
+            <input type="file" id="afterInput" accept="image/*" style="display:none"/>
+          </div>
+        </div>
+
+        <!-- DIFF MAP -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+          <div style="padding:10px 16px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#a78bfa">
+              <i class="bi bi-activity" style="margin-right:4px"></i>Difference Map
+            </span>
+            <span style="font-size:10px;color:var(--muted)">AI-generated heatmap</span>
+          </div>
+          <div style="padding:14px">
+            <div id="diffWrap" style="min-height:180px;border:2px dashed var(--border);
+              border-radius:8px;display:flex;flex-direction:column;
+              align-items:center;justify-content:center;
+              padding:24px;text-align:center;background:var(--bg2)">
+              <i class="bi bi-layers" style="font-size:36px;color:var(--border-l);margin-bottom:12px"></i>
+              <div style="font-size:13px;color:var(--text2);font-weight:600;margin-bottom:4px">Heatmap will appear here</div>
+              <div style="font-size:11px;color:var(--muted)">Select both images then click Compare</div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Selected image previews (from gallery) — shown when images are picked -->
-      <div id="compareGalleryPreviews" style="display:none;margin-bottom:16px">
-        <div class="compare-grid">
-          <div style="background:var(--card);border:2px solid #60a5fa;border-radius:var(--radius);overflow:hidden">
-            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
-              <i class="bi bi-clock-history" style="color:#60a5fa"></i>
-              <span style="font-size:11px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:1px">Before</span>
-            </div>
-            <div style="padding:14px">
-              <div id="beforePrevWrapGallery" style="position:relative">
-                <img id="beforePrevGallery" src="" alt="before" style="width:100%;border-radius:8px;display:block"/>
-                <button onclick="clearGalleryCompare('before')" style="position:absolute;top:8px;right:8px;
-                  background:rgba(0,0,0,.75);color:#fff;border:none;border-radius:50%;
-                  width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center">
-                  <i class="bi bi-x-lg" style="font-size:12px"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-          <div style="background:var(--card);border:2px solid #4ade80;border-radius:var(--radius);overflow:hidden">
-            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
-              <i class="bi bi-calendar-check" style="color:#4ade80"></i>
-              <span style="font-size:11px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:1px">After</span>
-            </div>
-            <div style="padding:14px">
-              <div id="afterPrevWrapGallery" style="position:relative">
-                <img id="afterPrevGallery" src="" alt="after" style="width:100%;border-radius:8px;display:block"/>
-                <button onclick="clearGalleryCompare('after')" style="position:absolute;top:8px;right:8px;
-                  background:rgba(0,0,0,.75);color:#fff;border:none;border-radius:50%;
-                  width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center">
-                  <i class="bi bi-x-lg" style="font-size:12px"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
-              <i class="bi bi-activity" style="color:#a78bfa"></i>
-              <span style="font-size:11px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:1px">Difference Map</span>
-            </div>
-            <div style="padding:14px">
-              <div id="diffWrap" style="min-height:160px;border:2px dashed var(--border);border-radius:8px;
-                display:flex;flex-direction:column;align-items:center;justify-content:center;
-                padding:24px;text-align:center;background:var(--bg2)">
-                <i class="bi bi-layers" style="font-size:32px;color:var(--border-l);margin-bottom:10px"></i>
-                <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:4px">Heatmap will appear here</div>
-                <div style="font-size:11px;color:var(--muted)">Click Compare Images below</div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Action bar -->
@@ -403,6 +360,7 @@
     </div>
 
     <div id="compareResultPanel" class="panel mt-4 d-none"></div>
+
 
   </section>
 
@@ -951,29 +909,84 @@
 
   <!-- ── REPORTS ─────────────────────────────────────────────── -->
   <section class="content-section" id="section-reports">
-    <h2 class="section-title"><i class="bi bi-file-earmark-bar-graph"></i> Reports & Export</h2>
+
+    <div style="margin-bottom:24px">
+      <h2 class="section-title"><i class="bi bi-file-earmark-bar-graph" style="color:var(--accent)"></i> Reports &amp; Export</h2>
+      <p class="section-sub">Generate and download detailed reports for artifacts and inspections</p>
+    </div>
+
     <div class="reports-grid">
-      <div class="panel p-4">
-        <i class="bi bi-file-earmark-pdf report-icon"></i>
-        <h3>Artifact PDF Report</h3>
-        <p>Full inspection history with AI analysis, damage metrics and recommendations</p>
-        <div class="fgroup mt-3"><select class="fselect" id="pdfArt"><option value="">— Select artifact —</option></select></div>
-        <button class="btn-primary mt-2" onclick="exportPdf()"><i class="bi bi-download"></i> Download PDF</button>
+
+      <!-- PDF Report -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+        padding:24px;display:flex;flex-direction:column;gap:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ef4444,transparent)"></div>
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:48px;height:48px;border-radius:12px;background:rgba(239,68,68,.12);
+            color:#f87171;display:flex;align-items:center;justify-content:center;
+            font-size:22px;flex-shrink:0">
+            <i class="bi bi-file-earmark-pdf-fill"></i>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">Artifact PDF Report</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">Full inspection history with AI analysis, damage metrics and conservation recommendations</div>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600;display:block;margin-bottom:6px">Select Artifact</label>
+          <select class="fselect" id="pdfArt"><option value="">— Select artifact —</option></select>
+        </div>
+        <button class="btn-primary" onclick="exportPdf()" style="width:100%;justify-content:center">
+          <i class="bi bi-download"></i> Download PDF
+        </button>
       </div>
-      <div class="panel p-4">
-        <i class="bi bi-file-earmark-excel report-icon" style="color:#16a34a"></i>
-        <h3>Excel Inspection Log</h3>
-        <p>All inspection records with severity metrics exported as a spreadsheet</p>
-        <div class="fgroup mt-3"><select class="fselect" id="excelArt"><option value="">All Artifacts</option></select></div>
-        <button class="btn-primary mt-2" onclick="exportExcelFiltered()"><i class="bi bi-download"></i> Download Excel</button>
+
+      <!-- Excel Log -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+        padding:24px;display:flex;flex-direction:column;gap:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#16a34a,transparent)"></div>
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:48px;height:48px;border-radius:12px;background:rgba(22,163,74,.12);
+            color:#4ade80;display:flex;align-items:center;justify-content:center;
+            font-size:22px;flex-shrink:0">
+            <i class="bi bi-file-earmark-excel-fill"></i>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">Excel Inspection Log</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">All inspection records with severity metrics, crack detection and fading data as a spreadsheet</div>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600;display:block;margin-bottom:6px">Filter by Artifact</label>
+          <select class="fselect" id="excelArt"><option value="">All Artifacts</option></select>
+        </div>
+        <button class="btn-primary" onclick="exportExcelFiltered()" style="width:100%;justify-content:center;background:linear-gradient(135deg,#16a34a,#15803d)">
+          <i class="bi bi-download"></i> Download Excel
+        </button>
       </div>
-      <div class="panel p-4">
-        <i class="bi bi-bar-chart-line report-icon" style="color:#7c3aed"></i>
-        <h3>Monthly Summary Chart</h3>
-        <p>Inspection frequency and average severity by month for the selected year</p>
-        <div class="fgroup mt-3"><select class="fselect" id="repYear"><option>2024</option><option selected>2025</option></select></div>
-        <div class="chart-card mt-3" style="padding:12px"><canvas id="repMonthChart" height="180"></canvas></div>
+
+      <!-- Monthly Chart -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+        padding:24px;display:flex;flex-direction:column;gap:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#7c3aed,transparent)"></div>
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:48px;height:48px;border-radius:12px;background:rgba(124,58,237,.12);
+            color:#a78bfa;display:flex;align-items:center;justify-content:center;
+            font-size:22px;flex-shrink:0">
+            <i class="bi bi-bar-chart-line-fill"></i>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">Monthly Summary Chart</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">Inspection frequency and average severity by month for the selected year</div>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600;display:block;margin-bottom:6px">Year</label>
+          <select class="fselect" id="repYear" onchange="loadMonthlyChart()"></select>
+        </div>
+        <div class="chart-card" style="padding:12px;flex:1"><canvas id="repMonthChart" height="160"></canvas></div>
       </div>
+
     </div>
   </section>
 

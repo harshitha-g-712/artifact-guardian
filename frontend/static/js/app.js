@@ -221,7 +221,7 @@ function showSection(name) {
   if (name === 'shipments')   loadShipments();
   if (name === 'alerts')      loadAlerts();
   if (name === 'users')       loadUsers();
-  if (name === 'reports')     { populateAllReportSelects(); loadReportMonthly(); }
+  if (name === 'reports')     { populateAllReportSelects(); populateReportYear(); loadReportMonthly(); }
   if (name === 'analyze')     populateArtifactSelect('analyzeArtifact');
   if (name === 'compare')     { initCompare(); populateArtifactSelect('compareArtifact'); }
   if (name === 'video')       { populateArtifactSelect('videoArtifact'); populateArtifactSelect('cameraArtifact'); }
@@ -907,9 +907,28 @@ async function loadCompareArtifactImages() {
   const aid = document.getElementById('compareArtifact')?.value;
   const picker = document.getElementById('compareImagePicker');
   const grid = document.getElementById('compareImageGrid');
+
+  // Reset everything on artifact change
+  _compareSelections = {};
+  // No separate gallery/manual sections anymore - unified panels
+  // Reset unified panels
+  ['before','after'].forEach(which => {
+    const img  = document.getElementById(which + 'Prev');
+    const wrap = document.getElementById(which + 'PrevWrap');
+    const zone = document.getElementById(which + 'Zone');
+    if (img)  { img.src=''; img.dataset.galleryUrl=''; }
+    if (wrap) wrap.classList.add('d-none');
+    if (zone) zone.style.display='';
+  });
+  // Reset diff map
+  const diffWrap = document.getElementById('diffWrap');
+  if (diffWrap) diffWrap.innerHTML = '<i class="bi bi-layers" style="font-size:36px;color:var(--border-l);margin-bottom:12px"></i><div style="font-size:13px;color:var(--text2);font-weight:600;margin-bottom:4px">Heatmap will appear here</div><div style="font-size:11px;color:var(--muted)">Select both images then click Compare</div>';
+  const resultPanel = document.getElementById('compareResultPanel');
+  if (resultPanel) resultPanel.classList.add('d-none');
+  const status = document.getElementById('compareStatus');
+  if (status) status.innerHTML = '';
   if (!aid) { if(picker) picker.style.display='none'; return; }
   if(picker) picker.style.display = 'block';
-  _compareSelections = {};
   grid.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center;grid-column:1/-1"><div class="spinner" style="width:18px;height:18px;border-width:2px;display:inline-block;margin-bottom:8px"></div><br>Loading images…</div>';
 
   try {
@@ -988,23 +1007,17 @@ function toggleCompareImage(idx, url) {
 }
 
 function setComparePreviewFromUrl(which, url) {
-  const img = document.getElementById(which + 'PrevGallery');
-  if (img) {
-    img.src = url;
-    img.dataset.galleryUrl = url;
-  }
-  // Show gallery previews section only (hide manual upload drop zones)
-  const galleryPreviews = document.getElementById('compareGalleryPreviews');
-  if (galleryPreviews) galleryPreviews.style.display = 'block';
-  // Make sure manual upload section is collapsed
-  const manualUpload = document.getElementById('compareManualUpload');
-  if (manualUpload) manualUpload.style.display = 'none';
+  // Use the single unified panel
+  const img  = document.getElementById(which + 'Prev');
+  const wrap = document.getElementById(which + 'PrevWrap');
+  const zone = document.getElementById(which + 'Zone');
+  if (img)  { img.src = url; img.dataset.galleryUrl = url; }
+  if (wrap) wrap.classList.remove('d-none');
+  if (zone) zone.style.display = 'none';
   updateCompareStatus();
 }
 
 function clearGalleryCompare(which) {
-  const img = document.getElementById(which + 'PrevGallery');
-  if (img) { img.src = ''; img.dataset.galleryUrl = ''; }
   // Deselect in grid
   Object.keys(_compareSelections).forEach(k => {
     if (_compareSelections[k] === which) {
@@ -1015,24 +1028,22 @@ function clearGalleryCompare(which) {
       if (badge) { badge.style.background='rgba(0,0,0,0)'; badge.innerHTML=''; }
     }
   });
-  // Hide previews if both cleared
-  const bUrl = document.getElementById('beforePrevGallery')?.dataset.galleryUrl;
-  const aUrl = document.getElementById('afterPrevGallery')?.dataset.galleryUrl;
-  if (!bUrl && !aUrl) {
-    const galleryPreviews = document.getElementById('compareGalleryPreviews');
-    if (galleryPreviews) galleryPreviews.style.display = 'none';
-  }
-  updateCompareStatus();
+  // Clear the unified panel
+  clearCompare(which);
 }
 
 // ── Compare Images ────────────────────────────────────────────────
 // Initialise compare drop zones after DOM is ready
+let _compareInitDone = false;
 function initCompare() {
+  if (_compareInitDone) return; // only init once
+  _compareInitDone = true;
+
   const beforeInput = document.getElementById('beforeInput');
   const afterInput  = document.getElementById('afterInput');
   const beforeZone  = document.getElementById('beforeZone');
   const afterZone   = document.getElementById('afterZone');
-  if (!beforeZone || !afterZone) return;
+  if (!beforeZone || !afterZone || !beforeInput || !afterInput) return;
 
   // Click zone → trigger hidden input
   beforeZone.addEventListener('click', () => beforeInput.click());
@@ -1042,7 +1053,7 @@ function initCompare() {
   beforeInput.addEventListener('change', () => loadComparePreview('before', beforeInput));
   afterInput.addEventListener('change',  () => loadComparePreview('after',  afterInput));
 
-  // Drag & drop for compare zones
+  // Drag & drop
   [beforeZone, afterZone].forEach(zone => {
     zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
@@ -1065,7 +1076,9 @@ function loadComparePreview(which, input) {
     const wrap = document.getElementById(which + 'PrevWrap');
     const zone = document.getElementById(which + 'Zone');
     const name = document.getElementById(which + 'Name');
+    if (!img || !wrap || !zone) return;
     img.src = e.target.result;
+    img.dataset.galleryUrl = ''; // clear any gallery URL
     wrap.classList.remove('d-none');
     zone.style.display = 'none';
     if (name) name.textContent = `📎 ${file.name}`;
@@ -1075,19 +1088,34 @@ function loadComparePreview(which, input) {
 }
 
 function clearCompare(which) {
-  document.getElementById(which + 'Input').value = '';
-  document.getElementById(which + 'PrevWrap').classList.add('d-none');
-  document.getElementById(which + 'Zone').style.display = '';
-  const name = document.getElementById(which + 'Name');
-  if (name) name.textContent = '';
+  const input = document.getElementById(which + 'Input');
+  const wrap  = document.getElementById(which + 'PrevWrap');
+  const zone  = document.getElementById(which + 'Zone');
+  const img   = document.getElementById(which + 'Prev');
+  const name  = document.getElementById(which + 'Name');
+  if (input) input.value = '';
+  if (img)   { img.src = ''; img.dataset.galleryUrl = ''; }
+  if (wrap)  wrap.classList.add('d-none');
+  if (zone)  zone.style.display = '';
+  if (name)  name.textContent = '';
+  // Deselect in image grid if it was a gallery pick
+  Object.keys(_compareSelections).forEach(k => {
+    if (_compareSelections[k] === which) {
+      _compareSelections[k] = null;
+      const card  = document.getElementById(`cmpImg_${k}`);
+      const badge = document.getElementById(`cmpBadge_${k}`);
+      if (card)  { card.style.borderColor='transparent'; card.style.boxShadow=''; }
+      if (badge) { badge.style.background='rgba(0,0,0,0)'; badge.innerHTML=''; }
+    }
+  });
   updateCompareStatus();
 }
 
 function updateCompareStatus() {
   const bf = document.getElementById('beforeInput')?.files[0];
   const af = document.getElementById('afterInput')?.files[0];
-  const beforeUrl = document.getElementById('beforePrevGallery')?.dataset.galleryUrl;
-  const afterUrl  = document.getElementById('afterPrevGallery')?.dataset.galleryUrl;
+  const beforeUrl = document.getElementById('beforePrev')?.dataset.galleryUrl;
+  const afterUrl  = document.getElementById('afterPrev')?.dataset.galleryUrl;
   const hasB = bf || beforeUrl;
   const hasA = af || afterUrl;
   const status = document.getElementById('compareStatus');
@@ -1099,12 +1127,12 @@ function updateCompareStatus() {
 }
 
 async function runCompare() {
-  const beforeGalleryImg = document.getElementById('beforePrevGallery');
-  const afterGalleryImg  = document.getElementById('afterPrevGallery');
+  const beforeImg = document.getElementById('beforePrev');
+  const afterImg  = document.getElementById('afterPrev');
   const bf = document.getElementById('beforeInput')?.files[0];
   const af = document.getElementById('afterInput')?.files[0];
-  const beforeUrl = beforeGalleryImg?.dataset.galleryUrl;
-  const afterUrl  = afterGalleryImg?.dataset.galleryUrl;
+  const beforeUrl = beforeImg?.dataset.galleryUrl;
+  const afterUrl  = afterImg?.dataset.galleryUrl;
 
   if (!bf && !beforeUrl) { toast('Select or upload the BEFORE image first', 'warning'); return; }
   if (!af && !afterUrl)  { toast('Select or upload the AFTER image first', 'warning'); return; }
@@ -1165,37 +1193,139 @@ async function runCompare() {
     // Show result panel
     const panel = document.getElementById('compareResultPanel');
     panel.classList.remove('d-none');
-    const delta = d.fading_delta || 0;
-    const pct   = d.pct_change   || 0;
+    const delta   = d.fading_delta || 0;
+    const pct     = d.pct_change   || 0;
+    const fadingB = ((d.fading_before||0)*100).toFixed(0);
+    const fadingA = ((d.fading_after||0)*100).toFixed(0);
+
+    // Determine risk level
+    const risk = pct >= 60 ? 'CRITICAL' : pct >= 30 ? 'HIGH' : pct >= 10 ? 'MEDIUM' : 'LOW';
+    const riskMeta = {
+      CRITICAL: { color:'#f87171', bg:'rgba(220,38,38,.1)', border:'rgba(220,38,38,.3)', icon:'bi-exclamation-octagon-fill', label:'Critical Deterioration' },
+      HIGH:     { color:'#fb923c', bg:'rgba(234,88,12,.1)', border:'rgba(234,88,12,.3)', icon:'bi-exclamation-triangle-fill', label:'High Deterioration' },
+      MEDIUM:   { color:'#fbbf24', bg:'rgba(245,158,11,.1)', border:'rgba(245,158,11,.3)', icon:'bi-exclamation-circle-fill', label:'Moderate Change' },
+      LOW:      { color:'#4ade80', bg:'rgba(22,163,74,.1)',  border:'rgba(22,163,74,.3)',  icon:'bi-check-circle-fill', label:'Stable Condition' },
+    }[risk];
+
+    // Recommended actions based on risk
+    const actions = {
+      CRITICAL: [
+        { icon:'bi-tools', text:'Immediate conservation treatment required' },
+        { icon:'bi-person-badge', text:'Contact a professional conservator urgently' },
+        { icon:'bi-thermometer-high', text:'Check and stabilise storage environment' },
+        { icon:'bi-camera', text:'Document current condition with high-res photography' },
+        { icon:'bi-shield-exclamation', text:'Consider removing from display immediately' },
+      ],
+      HIGH: [
+        { icon:'bi-tools', text:'Schedule conservation treatment within 30 days' },
+        { icon:'bi-thermometer', text:'Review storage humidity and temperature levels' },
+        { icon:'bi-camera', text:'Conduct detailed photographic documentation' },
+        { icon:'bi-clipboard2-pulse', text:'Increase inspection frequency to weekly' },
+      ],
+      MEDIUM: [
+        { icon:'bi-search', text:'Schedule a detailed inspection within 3 months' },
+        { icon:'bi-thermometer', text:'Monitor environmental conditions closely' },
+        { icon:'bi-clipboard2-pulse', text:'Log findings in the inspection record' },
+      ],
+      LOW: [
+        { icon:'bi-check2-circle', text:'Continue regular inspection schedule' },
+        { icon:'bi-thermometer', text:'Maintain current storage conditions' },
+        { icon:'bi-camera', text:'Update reference photographs annually' },
+      ],
+    }[risk];
+
     panel.innerHTML = `
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--text)">
-        <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;margin-right:8px"></i>Comparison Results
-      </h3>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:${pct>20?'#f87171':'#4ade80'}">${pct.toFixed(1)}%</div>
-          <div style="font-size:11px;color:#64748b;margin-top:4px;text-transform:uppercase">Change Index</div>
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <h3 style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin:0">
+          <i class="bi bi-bar-chart-line-fill" style="color:var(--accent)"></i> Comparison Results
+        </h3>
+        <span style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:800;
+          letter-spacing:.8px;text-transform:uppercase;
+          background:${riskMeta.bg};color:${riskMeta.color};border:1px solid ${riskMeta.border}">
+          <i class="bi ${riskMeta.icon}" style="margin-right:4px"></i>${riskMeta.label}
+        </span>
+      </div>
+
+      <!-- Metrics grid -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;
+          padding:16px;text-align:center;position:relative;overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:2px;
+            background:${riskMeta.color};opacity:.6"></div>
+          <div style="font-size:26px;font-weight:800;color:${riskMeta.color};line-height:1">
+            ${pct.toFixed(1)}%
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px;text-transform:uppercase;
+            letter-spacing:.8px;font-weight:600">Change Index</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;opacity:.6">pixel difference</div>
         </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--text)">${((d.fading_before||0)*100).toFixed(0)}%</div>
-          <div style="font-size:11px;color:#64748b;margin-top:4px;text-transform:uppercase">Fading Before</div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:26px;font-weight:800;color:#60a5fa;line-height:1">${fadingB}%</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">Fading Before</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;opacity:.6">original state</div>
         </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--text)">${((d.fading_after||0)*100).toFixed(0)}%</div>
-          <div style="font-size:11px;color:#64748b;margin-top:4px;text-transform:uppercase">Fading After</div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:26px;font-weight:800;color:#a78bfa;line-height:1">${fadingA}%</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">Fading After</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;opacity:.6">current state</div>
         </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:${delta>0?'#f87171':'#4ade80'}">${delta>0?'+':''}${(delta*100).toFixed(1)}%</div>
-          <div style="font-size:11px;color:#64748b;margin-top:4px;text-transform:uppercase">Fading Δ</div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:26px;font-weight:800;color:${delta>0?'#f87171':'#4ade80'};line-height:1">
+            ${delta>0?'+':''}${(delta*100).toFixed(1)}%
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">Fading Δ</div>
+          <div style="font-size:10px;color:${delta>0?'#f87171':'#4ade80'};margin-top:3px;opacity:.8">
+            ${delta>0?'deteriorated':'improved'}
+          </div>
         </div>
       </div>
-      <div style="padding:12px 16px;border-radius:8px;font-size:13px;
-           background:${pct>20?'rgba(220,38,38,.1)':'rgba(22,163,74,.1)'};
-           border:1px solid ${pct>20?'rgba(220,38,38,.3)':'rgba(22,163,74,.3)'};
-           color:${pct>20?'#f87171':'#4ade80'}">
-        ${pct>20
-          ? '⚠️ Significant deterioration detected between the two images. Conservation action recommended.'
-          : '✅ Minimal change detected between the two images. Condition appears stable.'}
+
+      <!-- Alert banner -->
+      <div style="background:${riskMeta.bg};border:1px solid ${riskMeta.border};
+        border-radius:12px;padding:16px 20px;margin-bottom:20px;
+        display:flex;align-items:flex-start;gap:14px">
+        <i class="bi ${riskMeta.icon}" style="color:${riskMeta.color};font-size:22px;flex-shrink:0;margin-top:2px"></i>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:${riskMeta.color};margin-bottom:4px">
+            ${riskMeta.label}
+          </div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.6">
+            ${risk === 'CRITICAL' ? 'Severe pixel-level differences detected. The artifact shows significant physical deterioration requiring immediate professional attention.'
+            : risk === 'HIGH'     ? 'Substantial changes detected between the two images. The artifact shows notable deterioration that should be addressed soon.'
+            : risk === 'MEDIUM'   ? 'Moderate differences detected. Some changes are visible but the artifact remains in acceptable condition.'
+            :                       'Minimal differences detected between the two images. The artifact appears to be in stable condition.'}
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommended actions -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);
+          display:flex;align-items:center;gap:8px">
+          <i class="bi bi-list-check" style="color:var(--accent);font-size:15px"></i>
+          <span style="font-size:13px;font-weight:700;color:var(--text)">Recommended Actions</span>
+        </div>
+        <div style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+          ${actions.map((a, i) => `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;
+              background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
+              <div style="width:32px;height:32px;border-radius:8px;
+                background:${riskMeta.bg};color:${riskMeta.color};
+                display:flex;align-items:center;justify-content:center;
+                font-size:14px;flex-shrink:0">
+                <i class="bi ${a.icon}"></i>
+              </div>
+              <div style="flex:1">
+                <span style="font-size:13px;color:var(--text)">${a.text}</span>
+              </div>
+              <span style="font-size:10px;font-weight:700;color:var(--muted);
+                background:var(--bg);border:1px solid var(--border);
+                padding:2px 8px;border-radius:4px;flex-shrink:0">
+                ${i === 0 ? (risk==='CRITICAL'?'URGENT':risk==='HIGH'?'PRIORITY':'ACTION') : 'SUGGESTED'}
+              </span>
+            </div>`).join('')}
+        </div>
       </div>`;
 
     toast('Comparison complete!', 'success');
@@ -2821,6 +2951,23 @@ async function exportExcelFiltered() {
   window.open(url,'_blank');
   toast('Downloading Excel…','info');
 }
+
+function populateReportYear() {
+  const sel = document.getElementById('repYear');
+  if (!sel) return;
+  const currentYear = new Date().getFullYear();
+  sel.innerHTML = '';
+  // Show last 4 years with current year selected
+  for (let y = currentYear; y >= currentYear - 3; y--) {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    if (y === currentYear) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function loadMonthlyChart() { loadReportMonthly(); }
 
 async function loadReportMonthly() {
   const year = document.getElementById('repYear')?.value || new Date().getFullYear();
