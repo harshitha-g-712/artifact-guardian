@@ -4,7 +4,7 @@ auth_routes.py  —  Login / logout / register / user management
 from flask import Blueprint, request, jsonify, session
 from backend.models.database import (
     get_user_by_username, create_user, get_all_users,
-    update_last_login, update_user,
+    update_last_login, update_user, update_user_password, set_user_active,
 )
 from backend.utils.auth import hash_password, verify_password, login_required, role_required
 
@@ -157,7 +157,43 @@ def list_users():
 @role_required("Admin")
 def edit_user(user_id):
     data = request.get_json(force=True)
-    update_user(user_id, data.get("full_name", ""), data.get("email", ""),
-                data.get("alert_email", ""), int(data.get("role_id", 3)))
+    is_active = data.get("is_active")
+    if is_active is not None:
+        is_active = int(is_active)
+    update_user(
+        user_id,
+        data.get("full_name", ""),
+        data.get("email", ""),
+        data.get("alert_email", data.get("email", "")),
+        int(data.get("role_id", 3)),
+        is_active=is_active
+    )
     log_action("User Edited", details=f"user_id:{user_id}")
     return jsonify({"status": "updated"})
+
+
+@auth_bp.put("/users/<int:user_id>/password")
+@login_required
+@role_required("Admin")
+def reset_user_password(user_id):
+    data = request.get_json(force=True)
+    password = data.get("password", "")
+    if not password or len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+    from backend.utils.auth import hash_password
+    pw_hash = hash_password(password)
+    update_user_password(user_id, pw_hash)
+    log_action("Password Reset", details=f"user_id:{user_id}")
+    return jsonify({"status": "password updated"})
+
+
+@auth_bp.put("/users/<int:user_id>/active")
+@login_required
+@role_required("Admin")
+def toggle_user_active(user_id):
+    data = request.get_json(force=True)
+    is_active = int(data.get("is_active", 1))
+    set_user_active(user_id, is_active)
+    action = "User Activated" if is_active else "User Deactivated"
+    log_action(action, details=f"user_id:{user_id}")
+    return jsonify({"status": "updated", "is_active": is_active})

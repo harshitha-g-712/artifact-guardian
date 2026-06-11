@@ -992,14 +992,124 @@
 
   <!-- ── USERS (Admin) ───────────────────────────────────────── -->
   <section class="content-section" id="section-users">
-    <div class="toolbar">
-      <button class="btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal"><i class="bi bi-person-plus"></i> Add User</button>
+
+    <div style="margin-bottom:20px">
+      <h2 class="section-title"><i class="bi bi-people-fill" style="color:var(--accent)"></i> User Management</h2>
+      <p class="section-sub">Manage system users, roles and access permissions</p>
     </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <i class="bi bi-person-plus"></i> Add User
+      </button>
+      <div id="userStatsRow" style="margin-left:auto;display:flex;gap:12px;font-size:12px;color:var(--muted)">
+        <span id="userStatTotal"></span>
+        <span id="userStatActive"></span>
+        <span id="userStatAdmin"></span>
+      </div>
+    </div>
+
     <div class="table-card"><div class="table-scroll"><table class="dtable">
-      <thead><tr><th>Username</th><th>Full Name</th><th>Email</th><th>Alert Email</th><th>Role</th><th>Active</th><th>Last Login</th></tr></thead>
-      <tbody id="usersTbody"><tr><td colspan="7" class="td-loading">Loading…</td></tr></tbody>
+      <thead><tr>
+        <th>User</th><th>Email</th><th>Role</th>
+        <th>Status</th><th>Last Login</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="usersTbody"><tr><td colspan="6" class="td-loading">Loading…</td></tr></tbody>
     </table></div></div>
   </section>
+
+  <!-- Edit User Modal -->
+  <div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content mc">
+        <div class="mhdr">
+          <h5><i class="bi bi-person-gear me-2" style="color:var(--accent)"></i>Edit User</h5>
+          <button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="mbody">
+          <input type="hidden" id="editUserId"/>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="flabel">Username</label>
+              <input type="text" class="finput" id="editUsername" readonly
+                style="opacity:.6;cursor:not-allowed"/>
+            </div>
+            <div class="col-md-6">
+              <label class="flabel">Full Name</label>
+              <input type="text" class="finput" id="editFullName" placeholder="Full name"/>
+            </div>
+            <div class="col-12">
+              <label class="flabel">Email</label>
+              <input type="email" class="finput" id="editEmail" placeholder="Email address"/>
+            </div>
+            <div class="col-12">
+              <label class="flabel">Alert Email</label>
+              <input type="email" class="finput" id="editAlertEmail" placeholder="Alert email"/>
+            </div>
+            <div class="col-md-6">
+              <label class="flabel">Role</label>
+              <select class="fselect" id="editRole">
+                <option value="1">Admin</option>
+                <option value="2">Curator</option>
+                <option value="3">Analyst</option>
+                <option value="4">Viewer</option>
+              </select>
+              <input type="hidden" id="editRoleName"/>
+            </div>
+            <div class="col-md-6">
+              <label class="flabel">Status</label>
+              <select class="fselect" id="editActive">
+                <option value="1">Active</option>
+                <option value="0">Deactivated</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="mftr">
+          <button class="btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn-primary" onclick="saveEditUser()">
+            <i class="bi bi-check2"></i> Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal -->
+  <div class="modal fade" id="resetPwModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content mc">
+        <div class="mhdr">
+          <h5><i class="bi bi-key me-2" style="color:var(--accent)"></i>Reset Password</h5>
+          <button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="mbody">
+          <input type="hidden" id="resetPwUserId"/>
+          <div style="margin-bottom:16px;padding:12px 16px;background:var(--bg2);
+            border-radius:8px;font-size:13px;color:var(--text2)">
+            <i class="bi bi-info-circle" style="color:var(--accent);margin-right:6px"></i>
+            Resetting password for: <strong id="resetPwUsername" style="color:var(--text)"></strong>
+          </div>
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="flabel">New Password <span style="color:#f87171">*</span></label>
+              <input type="password" class="finput" id="resetPwNew" placeholder="Min 6 characters"/>
+            </div>
+            <div class="col-12">
+              <label class="flabel">Confirm Password <span style="color:#f87171">*</span></label>
+              <input type="password" class="finput" id="resetPwConfirm" placeholder="Repeat password"/>
+            </div>
+          </div>
+        </div>
+        <div class="mftr">
+          <button class="btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn-primary" onclick="saveResetPassword()">
+            <i class="bi bi-key"></i> Reset Password
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ── IMPORT / EXPORT ─────────────────────────────────────── -->
   

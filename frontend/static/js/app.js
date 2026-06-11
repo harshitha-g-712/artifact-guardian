@@ -2990,21 +2990,157 @@ async function loadReportMonthly() {
 
 // ── Users ─────────────────────────────────────────────────────────
 async function loadUsers() {
+  const tbody = document.getElementById('usersTbody'); if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" class="td-loading">Loading…</td></tr>';
   try {
-    const r = await api('/api/users');
+    const r = await api('/api/auth/users');
     const users = await r.json();
-    const tbody = document.getElementById('usersTbody'); if (!tbody) return;
-    if (!users.length) { tbody.innerHTML='<tr><td colspan="6" class="loading-cell">No users</td></tr>'; return; }
-    tbody.innerHTML = users.map(u => `
-      <tr>
-        <td><strong>${u.username}</strong></td>
-        <td>${u.full_name||'—'}</td>
-        <td>${u.email||'—'}</td>
-        <td><span class="badge-risk risk-${u.role_name==='Admin'?'CRITICAL':u.role_name==='Curator'?'MEDIUM':'LOW'}">${u.role_name}</span></td>
-        <td><span style="color:${u.is_active?'var(--green)':'var(--red)'}">${u.is_active?'Active':'Disabled'}</span></td>
-        <td style="color:var(--muted);font-size:12px">${u.last_login?.slice(0,16)||'Never'}</td>
-      </tr>`).join('');
-  } catch(e) { console.error(e); }
+    if (!users.length) {
+      tbody.innerHTML='<tr><td colspan="6" class="td-loading">No users found</td></tr>';
+      return;
+    }
+
+    // Update stats
+    const setEl = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+    setEl('userStatTotal',  `👥 ${users.length} users`);
+    setEl('userStatActive', `✅ ${users.filter(u=>u.is_active).length} active`);
+    setEl('userStatAdmin',  `🔑 ${users.filter(u=>u.role_name==='Admin').length} admin`);
+
+    const roleColors = {
+      Admin:   { bg:'rgba(239,68,68,.12)',  color:'#f87171' },
+      Curator: { bg:'rgba(245,158,11,.12)', color:'#fbbf24' },
+      Analyst: { bg:'rgba(139,92,246,.12)', color:'#a78bfa' },
+      Viewer:  { bg:'rgba(37,99,235,.12)',  color:'#60a5fa' },
+    };
+
+    tbody.innerHTML = users.map(u => {
+      const rc = roleColors[u.role_name] || { bg:'var(--bg2)', color:'var(--muted)' };
+      const isActive = u.is_active;
+      const lastLogin = u.last_login?.slice(0,16) || 'Never';
+      const initials = (u.full_name||u.username||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+      return `<tr style="${!isActive?'opacity:.55':''}">
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;
+              background:${rc.bg};color:${rc.color};
+              display:flex;align-items:center;justify-content:center;
+              font-size:12px;font-weight:700;flex-shrink:0">${initials}</div>
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:13px">${u.username}</div>
+              <div style="font-size:11px;color:var(--muted)">${u.full_name||'—'}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div style="font-size:12px;color:var(--text2)">${u.email||'—'}</div>
+          ${u.alert_email && u.alert_email !== u.email
+            ? `<div style="font-size:11px;color:var(--muted)">🔔 ${u.alert_email}</div>` : ''}
+        </td>
+        <td>
+          <span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;
+            letter-spacing:.5px;text-transform:uppercase;
+            background:${rc.bg};color:${rc.color}">
+            ${u.role_name}
+          </span>
+        </td>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
+            color:${isActive?'#4ade80':'#f87171'}">
+            <i class="bi bi-${isActive?'check-circle-fill':'x-circle-fill'}"></i>
+            ${isActive?'Active':'Deactivated'}
+          </span>
+        </td>
+        <td style="font-size:12px;color:var(--muted)">${lastLogin}</td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button class="btn-icon" title="Edit user"
+              onclick="openEditUser(${u.user_id},'${u.username}','${u.full_name||''}','${u.email||''}','${u.alert_email||''}',${u.role_id||0},${u.is_active?1:0},'${u.role_name||''}')">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn-icon" title="Reset password"
+              onclick="openResetPassword(${u.user_id},'${u.username}')">
+              <i class="bi bi-key"></i>
+            </button>
+            <button class="btn-icon" title="${isActive?'Deactivate':'Activate'} user"
+              style="color:${isActive?'#f87171':'#4ade80'}"
+              onclick="toggleUserActive(${u.user_id},${isActive?0:1},'${u.username}')">
+              <i class="bi bi-${isActive?'person-x':'person-check'}"></i>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error(e); tbody.innerHTML='<tr><td colspan="6" class="td-loading">Error loading users</td></tr>'; }
+}
+
+function openEditUser(id, username, fullName, email, alertEmail, roleId, isActive, roleName) {
+  document.getElementById('editUserId').value     = id;
+  document.getElementById('editUsername').value   = username;
+  document.getElementById('editFullName').value   = fullName;
+  document.getElementById('editEmail').value      = email;
+  document.getElementById('editAlertEmail').value = alertEmail;
+  document.getElementById('editActive').value     = isActive;
+
+  // Map role_name to role_id if roleId not available
+  const roleMap = { Admin:1, Curator:2, Analyst:3, Viewer:4 };
+  const resolvedRoleId = roleId || roleMap[roleName] || 3;
+  document.getElementById('editRole').value = resolvedRoleId;
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('editUserModal')).show();
+}
+
+async function saveEditUser() {
+  const id         = document.getElementById('editUserId').value;
+  const full_name  = document.getElementById('editFullName').value.trim();
+  const email      = document.getElementById('editEmail').value.trim();
+  const alert_email = document.getElementById('editAlertEmail').value.trim();
+  const role_id    = parseInt(document.getElementById('editRole').value);
+  const is_active  = parseInt(document.getElementById('editActive').value);
+  if (!email) { toast('Email is required','warning'); return; }
+  try {
+    const r = await api(`/api/auth/users/${id}`, { method:'PUT', body:{ full_name, email, alert_email:alert_email||email, role_id, is_active } });
+    if (r.ok) {
+      toast('User updated!','success');
+      bootstrap.Modal.getInstance(document.getElementById('editUserModal'))?.hide();
+      loadUsers();
+    } else { const d=await r.json(); toast(d.error||'Update failed','error'); }
+  } catch(e) { toast('Network error','error'); }
+}
+
+function openResetPassword(id, username) {
+  document.getElementById('resetPwUserId').value   = id;
+  document.getElementById('resetPwUsername').textContent = username;
+  document.getElementById('resetPwNew').value      = '';
+  document.getElementById('resetPwConfirm').value  = '';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('resetPwModal')).show();
+}
+
+async function saveResetPassword() {
+  const id  = document.getElementById('resetPwUserId').value;
+  const pw  = document.getElementById('resetPwNew').value;
+  const pw2 = document.getElementById('resetPwConfirm').value;
+  if (!pw || pw.length < 6) { toast('Password must be at least 6 characters','warning'); return; }
+  if (pw !== pw2) { toast('Passwords do not match','warning'); return; }
+  try {
+    const r = await api(`/api/auth/users/${id}/password`, { method:'PUT', body:{ password: pw } });
+    if (r.ok) {
+      toast('Password reset successfully!','success');
+      bootstrap.Modal.getInstance(document.getElementById('resetPwModal'))?.hide();
+    } else { const d=await r.json(); toast(d.error||'Reset failed','error'); }
+  } catch(e) { toast('Network error','error'); }
+}
+
+async function toggleUserActive(id, newState, username) {
+  const action = newState ? 'activate' : 'deactivate';
+  if (!confirm(`Are you sure you want to ${action} user "${username}"?`)) return;
+  try {
+    const r = await api(`/api/auth/users/${id}/active`, { method:'PUT', body:{ is_active: newState } });
+    if (r.ok) {
+      toast(`User "${username}" ${newState?'activated':'deactivated'}!`, 'success');
+      loadUsers();
+    } else { const d=await r.json(); toast(d.error||'Failed','error'); }
+  } catch(e) { toast('Network error','error'); }
 }
 
 async function saveUser() {

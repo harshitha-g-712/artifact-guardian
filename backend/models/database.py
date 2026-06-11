@@ -70,7 +70,7 @@ def get_all_users():
     cur = conn.cursor()
     cur.execute(
         """SELECT u.user_id, u.username, u.email, u.full_name, u.is_active,
-                  u.alert_email, u.last_login, r.role_name
+                  u.alert_email, u.last_login, r.role_name, u.role_id
            FROM users u JOIN roles r ON r.role_id = u.role_id
            ORDER BY u.created_at DESC""")
     rows = _all(cur)
@@ -99,12 +99,37 @@ def update_last_login(user_id):
     cur.close(); conn.close()
 
 
-def update_user(user_id, full_name, email, alert_email, role_id):
+def update_user(user_id, full_name, email, alert_email, role_id, is_active=None):
+    conn = get_connection()
+    cur = conn.cursor()
+    if is_active is not None:
+        cur.execute(
+            "UPDATE users SET full_name=%s, email=%s, alert_email=%s, role_id=%s, is_active=%s WHERE user_id=%s",
+            (full_name, email, alert_email, role_id, is_active, user_id))
+    else:
+        cur.execute(
+            "UPDATE users SET full_name=%s, email=%s, alert_email=%s, role_id=%s WHERE user_id=%s",
+            (full_name, email, alert_email, role_id, user_id))
+    conn.commit()
+    cur.close(); conn.close()
+
+
+def update_user_password(user_id, password_hash):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "UPDATE users SET full_name=%s, email=%s, alert_email=%s, role_id=%s WHERE user_id=%s",
-        (full_name, email, alert_email, role_id, user_id))
+        "UPDATE users SET password_hash=%s WHERE user_id=%s",
+        (password_hash, user_id))
+    conn.commit()
+    cur.close(); conn.close()
+
+
+def set_user_active(user_id, is_active):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE users SET is_active=%s WHERE user_id=%s",
+        (is_active, user_id))
     conn.commit()
     cur.close(); conn.close()
 
