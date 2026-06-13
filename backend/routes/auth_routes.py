@@ -96,20 +96,21 @@ def me():
     if "user_id" not in session:
         return jsonify({"logged_in": False}), 401
 
-    role     = session.get("role_name", "")
-    is_power = role in ("Admin", "Curator")
+    role        = session.get("role_name", "")
+    is_power    = role in ("Admin", "Curator")
+    is_analyst  = role in ("Admin", "Curator", "Analyst")
 
     permissions = {
-        "can_analyze":          is_power,
-        "can_edit_artifacts":   is_power,
+        "can_analyze":          is_analyst,   # Analyst, Curator, Admin
+        "can_compare":          is_analyst,   # Analyst, Curator, Admin
+        "can_reports":          is_analyst,   # Analyst, Curator, Admin
+        "can_edit_artifacts":   is_power,     # Curator, Admin only
+        "can_camera":           is_power,     # Curator, Admin only
+        "can_shipments":        is_power,     # Curator, Admin only
         "can_delete_artifacts": role == "Admin",
         "can_manage_users":     role == "Admin",
         "can_import":           role == "Admin",
         "can_export_excel":     role == "Admin",
-        "can_camera":           is_power,
-        "can_compare":          is_power,
-        "can_shipments":        is_power,
-        "can_reports":          is_power,
     }
 
     return jsonify({

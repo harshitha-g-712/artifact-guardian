@@ -60,7 +60,7 @@ function applyRBAC() {
 
   /* a) Nav link visibility */
   // Analyst treated same rank as Viewer
-  const ROLE_RANK = { viewer: 1, analyst: 1, curator: 2, admin: 3 };
+  const ROLE_RANK = { viewer: 1, analyst: 2, curator: 3, admin: 4 };
   const NAV_ROLES = {
     dashboard:   'viewer',
     artifacts:   'viewer',
@@ -69,11 +69,11 @@ function applyRBAC() {
     trends:      'viewer',
     alerts:      'viewer',
     heatmap:     'viewer',      // ← ADD THIS (all roles see heatmap)
-    analyze:     'curator',
-    compare:     'curator',
+    analyze:     'analyst',
+    compare:     'analyst',
+    reports:     'analyst',
     video:       'curator',
     shipments:   'curator',
-    reports:     'curator',
     audit:       'admin',       // ← ADD THIS (admin only)
     users:       'admin',
     import:      'admin',
@@ -113,8 +113,8 @@ function applyRBAC() {
     });
   }
 
-  // Viewer / Analyst: hide artifact card action buttons
-  if (role === 'Viewer' || role === 'Analyst') {
+  // Viewer: hide artifact card action buttons entirely
+  if (role === 'Viewer') {
     document.querySelectorAll('.artifact-actions, .card-actions').forEach(el => {
       el.style.display = 'none';
     });
@@ -162,15 +162,15 @@ function initNav() {
 function showSection(name) {
   const role = STATE.user?.role || '';
 
-  // Analyst = same access as Viewer (read-only)
   const ALLOWED = {
     Admin:   ['dashboard','analyze','compare','video','artifacts','inspections',
                'gallery','shipments','trends','alerts','reports','users','import',
-               'audit','heatmap'],                               // ← added audit, heatmap
+               'audit','heatmap'],
     Curator: ['dashboard','analyze','compare','video','artifacts','inspections',
-               'gallery','shipments','trends','alerts','reports','heatmap'],  // ← added heatmap
-    Viewer:  ['dashboard','artifacts','inspections','gallery','trends','alerts','heatmap'],  // ← added heatmap
-    Analyst: ['dashboard','artifacts','inspections','gallery','trends','alerts','heatmap'],  // ← added heatmap
+               'gallery','shipments','trends','alerts','reports','heatmap'],
+    Analyst: ['dashboard','analyze','compare','reports','artifacts','inspections',
+               'gallery','trends','alerts','heatmap'],
+    Viewer:  ['dashboard','artifacts','inspections','gallery','trends','alerts','heatmap'],
   };
 
 
@@ -386,7 +386,7 @@ function renderArtifactGrid(artifacts) {
         </div>
         <div class="artifact-actions">
           <button class="btn-icon" title="View Details" onclick="openArtifactDetail(${a.artifact_id})"><i class="bi bi-eye"></i></button>
-          <button class="btn-icon" title="AI Inspect" onclick="openAnalyzeFor(${a.artifact_id})"><i class="bi bi-cpu"></i></button>
+          ${canAccess('can_analyze') ? `<button class="btn-icon" title="AI Inspect" onclick="openAnalyzeFor(${a.artifact_id})"><i class="bi bi-cpu"></i></button>` : ''}
           <button class="btn-icon" title="Trend" onclick="openTrendFor(${a.artifact_id})"><i class="bi bi-graph-up"></i></button>
           <button class="btn-icon" title="PDF" onclick="exportPdfFor(${a.artifact_id})"><i class="bi bi-file-pdf"></i></button>
           <button class="btn-icon" title="QR Code" onclick="showArtifactQr(${a.artifact_id}, '${a.name.replace(/'/g,"\'")}')"><i class="bi bi-qr-code"></i></button>
@@ -523,11 +523,11 @@ async function openArtifactDetail(id) {
       <!-- Footer actions -->
       <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:8px;
         flex-shrink:0;background:var(--bg2);flex-wrap:wrap">
-        <button onclick="openAnalyzeFor(${art.artifact_id});document.getElementById('artDetailModal').remove()"
+        ${canAccess('can_analyze') ? `<button onclick="openAnalyzeFor(${art.artifact_id});document.getElementById('artDetailModal').remove()"
           style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
             background:var(--accent);border:none;color:#111;display:flex;align-items:center;gap:6px">
           <i class="bi bi-cpu"></i> AI Analyze
-        </button>
+        </button>` : ''}
         <button onclick="openTrendFor(${art.artifact_id});document.getElementById('artDetailModal').remove()"
           style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
             background:var(--card);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;gap:6px">
@@ -2011,7 +2011,7 @@ async function loadShipments() {
         <td>
           <div style="display:flex;gap:4px">
             <button class="btn-icon" title="View" onclick="viewShipment(${s.shipment_id})"><i class="bi bi-eye"></i></button>
-            ${s.status!=='Delivered'&&s.status!=='Cancelled'
+            ${canAccess('can_shipments') && s.status!=='Delivered'&&s.status!=='Cancelled'
               ?`<button class="btn-icon" title="Update status" onclick="openUpdateShipment(${s.shipment_id},'${s.status}')"><i class="bi bi-arrow-repeat"></i></button>`:''}
           </div>
         </td>
@@ -3082,12 +3082,22 @@ function openEditUser(id, username, fullName, email, alertEmail, roleId, isActiv
   document.getElementById('editAlertEmail').value = alertEmail;
   document.getElementById('editActive').value     = isActive;
 
-  // Map role_name to role_id if roleId not available
+  // Map role_name to role_id
   const roleMap = { Admin:1, Curator:2, Analyst:3, Viewer:4 };
   const resolvedRoleId = roleId || roleMap[roleName] || 3;
   document.getElementById('editRole').value = resolvedRoleId;
 
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('editUserModal')).show();
+  // Move modal to body to avoid stacking context issues
+  const modal = document.getElementById('editUserModal');
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+
+  const instance = bootstrap.Modal.getOrCreateInstance(modal);
+  instance.show();
+
+  // Focus first editable field after shown
+  modal.addEventListener('shown.bs.modal', () => {
+    document.getElementById('editFullName')?.focus();
+  }, { once: true });
 }
 
 async function saveEditUser() {
@@ -3108,12 +3118,28 @@ async function saveEditUser() {
   } catch(e) { toast('Network error','error'); }
 }
 
+function togglePwVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  const icon = btn.querySelector('i');
+  if (icon) icon.className = isHidden ? 'bi bi-eye-slash' : 'bi bi-eye';
+  btn.style.color = isHidden ? 'var(--accent)' : 'var(--muted)';
+}
+
 function openResetPassword(id, username) {
   document.getElementById('resetPwUserId').value   = id;
   document.getElementById('resetPwUsername').textContent = username;
   document.getElementById('resetPwNew').value      = '';
   document.getElementById('resetPwConfirm').value  = '';
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('resetPwModal')).show();
+  const resetModal = document.getElementById('resetPwModal');
+  if (resetModal.parentElement !== document.body) document.body.appendChild(resetModal);
+  const resetInstance = bootstrap.Modal.getOrCreateInstance(resetModal);
+  resetInstance.show();
+  resetModal.addEventListener('shown.bs.modal', () => {
+    document.getElementById('resetPwNew')?.focus();
+  }, { once: true });
 }
 
 async function saveResetPassword() {

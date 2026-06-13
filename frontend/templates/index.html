@@ -1093,11 +1093,29 @@
           <div class="row g-3">
             <div class="col-12">
               <label class="flabel">New Password <span style="color:#f87171">*</span></label>
-              <input type="password" class="finput" id="resetPwNew" placeholder="Min 6 characters"/>
+              <div style="position:relative">
+                <input type="password" class="finput" id="resetPwNew" placeholder="Min 6 characters"
+                  style="padding-right:44px"/>
+                <button type="button" onclick="togglePwVisibility('resetPwNew',this)"
+                  style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                    background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;
+                    padding:0;display:flex;align-items:center">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
             </div>
             <div class="col-12">
               <label class="flabel">Confirm Password <span style="color:#f87171">*</span></label>
-              <input type="password" class="finput" id="resetPwConfirm" placeholder="Repeat password"/>
+              <div style="position:relative">
+                <input type="password" class="finput" id="resetPwConfirm" placeholder="Repeat password"
+                  style="padding-right:44px"/>
+                <button type="button" onclick="togglePwVisibility('resetPwConfirm',this)"
+                  style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                    background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;
+                    padding:0;display:flex;align-items:center">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
