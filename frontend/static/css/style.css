@@ -1481,3 +1481,14 @@ textarea.finput{resize:vertical;min-height:80px}
 .modal-content a { pointer-events: auto !important; cursor: auto; }
 .modal-content select { cursor: pointer !important; }
 .modal-content button { cursor: pointer !important; }
+
+/* ── Modal interactivity fix (Bootstrap 5) ──────────────────────── */
+.modal                    { pointer-events: none; }
+.modal.show               { pointer-events: auto; }
+.modal-dialog             { pointer-events: auto; }
+.modal-content            { pointer-events: auto; }
+.modal-content input      { pointer-events: auto !important; cursor: text !important; }
+.modal-content select     { pointer-events: auto !important; cursor: pointer !important; }
+.modal-content textarea   { pointer-events: auto !important; cursor: text !important; }
+.modal-content button     { pointer-events: auto !important; cursor: pointer !important; }
+.modal-content label      { pointer-events: auto !important; cursor: default !important; }
