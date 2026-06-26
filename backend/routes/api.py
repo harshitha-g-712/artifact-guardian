@@ -255,17 +255,44 @@ def analyze():
     thumb_b64 = make_thumbnail_b64(pp["original_bgr"])
 
     # Auto-alert + email
-    if sev_label in ("HIGH", "CRITICAL"):
+    # ── Auto-alert + email ────────────────────────────────────────────────────
+    if sev_label in ("MEDIUM", "HIGH", "CRITICAL"):
         msg = build_alert_message(art["name"], sev, crack, pp["fading_score"])
         create_alert(aid, msg, sev_label, "Damage", session.get("user_id"))
+
+        # Determine recipient: custodian alert_email → fallback email → skip
+        import os
+        recipient = None
         custodian_id = art.get("custodian_id")
         if custodian_id:
             try:
                 custodian = get_user_by_id(custodian_id)
                 if custodian and custodian.get("alert_email"):
-                    send_damage_alert(custodian["alert_email"], art["name"], sev_label, sev, msg)
+                    recipient = custodian["alert_email"]
             except Exception as e:
-                print(f"[EMAIL] Error sending alert: {e}")
+                print(f"[EMAIL] Custodian lookup error: {e}")
+
+        # Use fallback email if no custodian is assigned
+        if not recipient:
+            recipient = os.getenv("ALERT_FALLBACK_EMAIL", "")
+
+        # Dispatch your new high-fidelity HTML notification brief
+        if recipient and "@" in recipient:
+            try:
+                from backend.utils.email_service import send_production_damage_alert
+                
+                send_production_damage_alert(
+                    to_email=recipient,
+                    artifact_name=art["name"],
+                    category=art["category"],
+                    severity_score=sev,
+                    ai_report=ai_report,
+                    heatmap_b64=heatmap_b64
+                )
+            except Exception as e:
+                print(f"[EMAIL ERROR] Failed to send production HTML brief: {e}")
+        else:
+            print(f"[EMAIL] No recipient for alert — set ALERT_FALLBACK_EMAIL in .env")
 
     return jsonify({
         "inspection_id":  iid,
@@ -284,17 +311,115 @@ def analyze():
 
 # ── Compare Images ────────────────────────────────────────────────────────────
 
+#  REPLACEMent
+# 📍 REPLACE THE OLD @api.post("/compare") FUNCTION IN backend/routes/api.py WITH THIS:
+
 @api.post("/compare")
 @login_required
 @require_role("Admin", "Curator")
 def compare():
     if "before" not in request.files or "after" not in request.files:
         return jsonify({"error": "Provide 'before' and 'after' images"}), 400
+    
+    # 1. Gather the selected artifact identity from the incoming payload
+    aid = request.form.get("artifact_id", type=int)
+    art = get_artifact(aid) if aid else None
+    art_name = art["name"] if art else "Ad-Hoc Asset"
+
     _, before_bytes = _save_file(request.files["before"], ALLOWED_IMG)
     _, after_bytes  = _save_file(request.files["after"], ALLOWED_IMG)
     if not before_bytes or not after_bytes:
         return jsonify({"error": "Invalid image types"}), 400
+        
+    # 2. Execute the computer vision structural comparison matrix
     result = compare_images(before_bytes, after_bytes)
+    pct_deviation = result.get("pct_change", 0.0)
+
+    # 3. AUTOMATIC RECORD HISTORY: Log every comparison directly to verification history tables
+    if art:
+        if pct_deviation < 10.0:
+            status_tier = "AUTHENTIC"
+        elif pct_deviation < 25.0:
+            status_tier = "SUSPICIOUS"
+        else:
+            status_tier = "ALERT"
+
+        from backend.models.database import get_connection
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO fingerprint_verifications 
+                    (artifact_id, overall_score, status, score_breakdown, verified_by)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                aid, 
+                round(100.0 - pct_deviation, 2),  # Complementary similarity index out of 100%
+                status_tier,
+                json.dumps(result),
+                session.get("user_id")
+            ))
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"[DB ERROR] Automatically saving comparison history failed: {e}")
+            
+        # Log action to central security compliance audit logs
+        log_action("Fingerprint Verified", aid, art_name, 
+                   f"Compare Module — Match Score: {100.0 - pct_deviation:.1f}% Status: {status_tier}")
+
+        # 4. AUTOMATED INSURANCE CLAIM & INCIDENT DISPATCH
+        # Trigger an insurance briefing email if structural deviation is severe (>= 15%)
+        if pct_deviation >= 15.0:
+            import os
+            recipient = None
+            custodian_id = art.get("custodian_id")
+            if custodian_id:
+                try:
+                    custodian = get_user_by_id(custodian_id)
+                    if custodian and custodian.get("alert_email"):
+                        recipient = custodian["alert_email"]
+                except Exception as e:
+                    print(f"[EMAIL] Custodian lookup error: {e}")
+
+            if not recipient:
+                recipient = os.getenv("ALERT_FALLBACK_EMAIL", "")
+
+            if recipient and "@" in recipient:
+                try:
+                    from backend.utils.email_service import send_production_damage_alert
+                    
+                    # Official structural insurance claim brief text body
+                    insurance_report = (
+                        f"⚠️ OFFICIAL INSURANCE CLAIM & INCIDENT SUMMARY REPORT\n"
+                        f"=================================================================\n"
+                        f"INCIDENT CATEGORY : Critical Structural Change / Discrepancy\n"
+                        f"REPORT TIMESTAMP  : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Local Node\n"
+                        f"DETECTION METHOD  : Manual Before/After Image Cross-Examination\n"
+                        f"MEASURED DELTA    : {pct_deviation:.2f}% Structural Pattern Variance\n"
+                        f"AUDIT STATUS      : {status_tier} — RISK THRESHOLD EXCEEDED\n\n"
+                        f"INCIDENT COMPLIANCE DESCRIPTION:\n"
+                        f"A digital cross-examination comparison has identified an extreme visual "
+                        f"variance on this asset exceeding institutional tolerance metrics. "
+                        f"This document establishes an unalterable timestamped record of structural "
+                        f"alteration or asset substitution. Secure the gallery perimeter and preserve "
+                        f"localized climate sensor data for insurance claim adjuster evaluation."
+                    )
+                    
+                    # Send detailed responsive HTML layout email with the visual damage heatmap inline
+                    send_production_damage_alert(
+                        to_email=recipient,
+                        artifact_name=art["name"],
+                        category=art["category"],
+                        severity_score=10.0,  # Enforces max Crimson header theme layout urgency
+                        ai_report=insurance_report,
+                        heatmap_b64=result.get("diff_image_b64")
+                    )
+                    print(f"[INSURANCE ALARM] High-risk incident report dispatched to {recipient}")
+                except Exception as e:
+                    print(f"[EMAIL ERROR] Failed to send insurance alert: {e}")
+
     return jsonify(result)
 
 
@@ -360,17 +485,32 @@ def video_analyze():
     if missing:
         alert_msg = f"Video analysis detected missing objects: {', '.join(missing)}"
         create_alert(aid, alert_msg, "CRITICAL", "Missing Object", session.get("user_id"))
+        
+        # ── 🌟 UPDATED EMAIL ROUTING LOGIC WITH FALLBACKS ──
+        recipient = None
         custodian_id = art.get("custodian_id")
         if custodian_id:
             try:
                 custodian = get_user_by_id(custodian_id)
                 if custodian and custodian.get("alert_email"):
-                    send_missing_object_alert(
-                        custodian["alert_email"], art["name"],
-                        missing, os.path.basename(fpath)
-                    )
+                    recipient = custodian["alert_email"]
             except Exception as e:
-                print(f"[EMAIL] Error: {e}")
+                print(f"[EMAIL] Custodian lookup error: {e}")
+
+        # If no custodian is assigned to the artifact, fallback to the environment configuration email
+        if not recipient:
+            recipient = os.getenv("ALERT_FALLBACK_EMAIL", "")
+
+        if recipient and "@" in recipient:
+            try:
+                send_missing_object_alert(
+                    recipient, art["name"],
+                    missing, os.path.basename(fpath)
+                )
+            except Exception as e:
+                print(f"[EMAIL ERROR] Connection exception: {e}")
+        else:
+            print(f"[EMAIL] No recipient found — check ALERT_FALLBACK_EMAIL in your .env file")
 
     return jsonify({
         "video_id":        vid_id,
@@ -379,6 +519,10 @@ def video_analyze():
         "detected_objects": detected,
         "frame_count":     result["frame_count"],
         "report":          report,
+        "early_object_count": result.get("early_object_count", 0),
+        "late_object_count":  result.get("late_object_count", 0),
+        "mean_pixel_diff":    result.get("mean_pixel_diff", 0),
+        "change_score_pct":   result.get("change_score_pct", 0)
     })
 
 
@@ -1032,31 +1176,46 @@ def predict_artifact(aid):
         conn.close()
     return jsonify(result), 200
 
-
 @api.get("/audit-logs")
 @login_required
 @require_role("Admin")
 def audit_logs():
     from backend.models.database import get_connection
-    page     = request.args.get("page",    1,    type=int)
-    per_page = request.args.get("per",     50,   type=int)
-    search   = request.args.get("search",  "")
-    user_f   = request.args.get("user",    "")
-    action_f = request.args.get("action",  "")
-    offset   = (page - 1) * per_page
+    page       = request.args.get("page",       1,  type=int)
+    # Support both 'per' and 'per_page' to catch frontend CSV exports cleanly
+    per_param  = request.args.get("per", type=int) or request.args.get("per_page", type=int)
+    per_page   = per_param if per_param else 50
+    search     = request.args.get("search",    "")
+    user_f     = request.args.get("user",      "")
+    action_f   = request.args.get("action",    "")
+    date_from  = request.args.get("date_from", "")
+    date_to    = request.args.get("date_to",   "")
+    offset     = (page - 1) * per_page
 
     conn = get_connection()
     cur  = conn.cursor()
 
     where  = []
     params = []
+    
+    # Text matching filters
     if search:
         where.append("(username LIKE %s OR action LIKE %s OR artifact_name LIKE %s)")
         params += [f"%{search}%", f"%{search}%", f"%{search}%"]
     if user_f:
-        where.append("username = %s"); params.append(user_f)
+        where.append("username = %s")
+        params.append(user_f)
     if action_f:
-        where.append("action LIKE %s"); params.append(f"%{action_f}%")
+        where.append("action LIKE %s")
+        params.append(f"%{action_f}%")
+        
+    # Temporal range query append filters
+    if date_from:
+        where.append("created_at >= %s")
+        params.append(f"{date_from} 00:00:00")
+    if date_to:
+        where.append("created_at <= %s")
+        params.append(f"{date_to} 23:59:59")
 
     where_sql = ("WHERE " + " AND ".join(where)) if where else ""
 
@@ -1079,7 +1238,7 @@ def audit_logs():
             row["created_at"] = row["created_at"].isoformat()
         rows.append(row)
 
-    # Distinct usernames for filter dropdown
+    # Distinct usernames for filter dropdown menu
     cur.execute("SELECT DISTINCT username FROM audit_logs ORDER BY username")
     users = [r[0] for r in cur.fetchall()]
 
@@ -1088,11 +1247,9 @@ def audit_logs():
         "logs":  rows,
         "total": total,
         "page":  page,
-        "pages": math.ceil(total / per_page),
+        "pages": math.ceil(total / per_page) if total > 0 else 1,
         "users": users,
     })
-
-
 @api.delete("/audit-logs")
 @login_required
 @require_role("Admin")
@@ -1187,4 +1344,83 @@ def risk_heatmap_data():
         "critical_rooms":   sum(1 for r in result if r["risk_level"] == "CRITICAL"),
         "high_risk_rooms":  sum(1 for r in result if r["risk_level"] == "HIGH"),
     })
+
+@api.get("/artifacts/<int:aid>/insurance-claim")
+@login_required
+@require_role("Admin", "Curator")
+def export_insurance_claim(aid):
+    art = get_artifact(aid)
+    if not art:
+        return jsonify({"error": "Artifact tracking profile not found"}), 404
+
+    # 1. Fetch the most recent high-variance discrepancy recorded for this artifact
+    from backend.models.database import get_connection
+    import json
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT overall_score, status, score_breakdown, verified_at, verified_by 
+            FROM fingerprint_verifications 
+            WHERE artifact_id = %s AND status = 'ALERT'
+            ORDER BY verified_at DESC LIMIT 1
+        """, (aid,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        return jsonify({"error": f"Database query failed: {str(e)}"}), 500
+
+    if not row:
+        return jsonify({"error": "No critical 'ALERT' status found in history. Verification anomaly must be recorded before generating a claim."}), 400
+
+    overall_score, status, score_breakdown, verified_at, verified_by = row
+    breakdown = json.loads(score_breakdown) if score_breakdown else {}
+
+    # 2. Compile formal insurance claim manifest structure
+    incident_time = verified_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(verified_at, 'strftime') else str(verified_at)
+    
+    claim_manifest = (
+        f"=================================================================\n"
+        f"          OFFICIAL INSURANCE CLAIM & LOSS MANIFEST               \n"
+        f"=================================================================\n"
+        f"POLICY REGISTRY REGION : GLOBAL-ASSET-SECURE\n"
+        f"CLAIM ID SPECIFIER     : CLM-{aid:04d}-{datetime.now().strftime('%Y%m%d')}\n"
+        f"FILING TIMESTAMP       : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC\n"
+        f"CLAIM VALIDATION STATUS: ACTION_REQUIRED_CRITICAL\n\n"
+        f"1. INSURED ASSET PROFILE:\n"
+        f"-----------------------------------------------------------------\n"
+        f"  - Unique Tracking ID : #{art['artifact_id']}\n"
+        f"  - Asset Nomenclature : {art['name']}\n"
+        f"  - Asset Classification: {art['category']}\n"
+        f"  - Registered Location: {art['location']}\n"
+        f"  - Asset Documented Age: {art['age']} Years Base\n\n"
+        f"2. DIGITAL FORENSIC INCIDENT TELEMETRY:\n"
+        f"-----------------------------------------------------------------\n"
+        f"  - Incident Trigger   : Visual Comparison Threshold Breach\n"
+        f"  - Logged Incident Time: {incident_time}\n"
+        f"  - Measured Pixel Delta: {100.0 - float(overall_score):.2f}% Total Deviation\n"
+        f"  - Verification State : {status} (Threshold Exceeded)\n"
+        f"  - CV Similarity Index : {overall_score}% Profile Match\n\n"
+        f"3. MOTOR SYSTEM ANALYSIS METRICS BREAKDOWN:\n"
+        f"-----------------------------------------------------------------\n"
+        f"  - Structural Hash Match : {breakdown.get('hash_similarity', 0.0):.1f}%\n"
+        f"  - Surface Texture Match : {breakdown.get('texture_similarity', 0.0):.1f}%\n"
+        f"  - Chromatic Color Match : {breakdown.get('color_similarity', 0.0):.1f}%\n"
+        f"  - Micro-Crack Separation: {breakdown.get('crack_pattern_similarity', 0.0):.1f}%\n\n"
+        f"4. CLEARANCE & COMPLIANCE SIGN-OFF:\n"
+        f"-----------------------------------------------------------------\n"
+        f"  - Validating Node ID : Node-01-Bengaluru-Workspace\n"
+        f"  - Logged Operator ID : User UID-{verified_by}\n"
+        f"  - Institutional Attest: Verified by computer vision telemetry pipeline.\n\n"
+        f"=================================================================\n"
+        f"     END OF CLAIM MANIFEST — FORWARD TO ASSIGNED ADJUSTER        \n"
+        f"================================================================="
+    )
+
+    # Stream the output directly as a downloadable plain text document
+    response = make_response(claim_manifest)
+    response.headers["Content-Disposition"] = f"attachment; filename=insurance_claim_asset_{aid}.txt"
+    response.headers["Content-Type"] = "text/plain"
+    return response
 

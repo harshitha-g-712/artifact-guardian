@@ -190,6 +190,8 @@ function showSection(name) {
     return;
   }
 
+  
+
   // Hide access denied panel
   const panel = document.getElementById('accessDeniedPanel');
   if (panel) panel.style.display = 'none';
@@ -1125,7 +1127,6 @@ function updateCompareStatus() {
   if (!hasB && hasA)  { status.innerHTML = '<i class="bi bi-check-circle-fill" style="color:#4ade80;margin-right:4px"></i>After ready — now select the Before image'; return; }
   status.innerHTML = '<i class="bi bi-check-circle-fill" style="color:#4ade80;margin-right:4px"></i><strong style="color:#4ade80">Both images ready</strong> — click Compare Images';
 }
-
 async function runCompare() {
   const beforeImg = document.getElementById('beforePrev');
   const afterImg  = document.getElementById('afterPrev');
@@ -1136,6 +1137,10 @@ async function runCompare() {
 
   if (!bf && !beforeUrl) { toast('Select or upload the BEFORE image first', 'warning'); return; }
   if (!af && !afterUrl)  { toast('Select or upload the AFTER image first', 'warning'); return; }
+
+  // ✅ FIXED: Extracted artifact drop-down context once here at the top
+  const artifactDropdown = document.getElementById('compareArtifact');
+  const artifactId = artifactDropdown ? artifactDropdown.value : null;
 
   const btn    = document.getElementById('compareBtn');
   const loader = document.getElementById('compareLoader');
@@ -1156,11 +1161,54 @@ async function runCompare() {
   const beforeFile = bf || (beforeUrl ? await urlToFile(beforeUrl, 'before.jpg') : null);
   const afterFile  = af || (afterUrl  ? await urlToFile(afterUrl,  'after.jpg')  : null);
 
-  if (!beforeFile) { toast('Could not load Before image', 'error'); return; }
-  if (!afterFile)  { toast('Could not load After image', 'error'); return; }
+  if (!beforeFile) { toast('Could not load Before image', 'error'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-arrow-left-right"></i> Compare Images'; loader.classList.add('d-none'); return; }
+  if (!afterFile)  { toast('Could not load After image', 'error'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-arrow-left-right"></i> Compare Images'; loader.classList.add('d-none'); return; }
 
-  fd.append('before', beforeFile);
-  fd.append('after',  afterFile);
+  // ⚡ SPEED OPTIMIZATION: Downscale and compress images instantly in memory
+  async function optimizeImageDimensions(file, maxDim = 600) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let w = img.width;
+          let h = img.height;
+          
+          // Calculate proportional downscaling boundaries
+          if (w > h) {
+            if (w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+          } else {
+            if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+          }
+          
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          
+          // Export downscaled binary recompressed blob
+          canvas.toBlob((blob) => {
+            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+          }, 'image/jpeg', 0.8); // 80% compression quality index
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Optimize both files in parallel before appending to the payload form
+  const fastBeforeFile = await optimizeImageDimensions(beforeFile);
+  const fastAfterFile  = await optimizeImageDimensions(afterFile);
+
+  fd.append('before', fastBeforeFile);
+  fd.append('after',  fastAfterFile);
+  
+  // Safely append the artifact context token for the database log sequence
+  if (artifactId) {
+    fd.append('artifact_id', artifactId);
+  }
 
   try {
     const r = await fetch('/api/compare', { method:'POST', body:fd, credentials:'include' });
@@ -1235,11 +1283,11 @@ async function runCompare() {
     }[risk];
 
     panel.innerHTML = `
-      <!-- Header -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
         <h3 style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin:0">
           <i class="bi bi-bar-chart-line-fill" style="color:var(--accent)"></i> Comparison Results
         </h3>
+          
         <span style="padding:5px 14px;border-radius:20px;font-size:11px;font-weight:800;
           letter-spacing:.8px;text-transform:uppercase;
           background:${riskMeta.bg};color:${riskMeta.color};border:1px solid ${riskMeta.border}">
@@ -1247,7 +1295,6 @@ async function runCompare() {
         </span>
       </div>
 
-      <!-- Metrics grid -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;
           padding:16px;text-align:center;position:relative;overflow:hidden">
@@ -1281,7 +1328,6 @@ async function runCompare() {
         </div>
       </div>
 
-      <!-- Alert banner -->
       <div style="background:${riskMeta.bg};border:1px solid ${riskMeta.border};
         border-radius:12px;padding:16px 20px;margin-bottom:20px;
         display:flex;align-items:flex-start;gap:14px">
@@ -1299,9 +1345,8 @@ async function runCompare() {
         </div>
       </div>
 
-      <!-- Recommended actions -->
       <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-        <div style="padding:14px 20px;border-bottom:1px solid var(--border);
+        <div style="padding:14px 24px;border-bottom:1px solid var(--border);
           display:flex;align-items:center;gap:8px">
           <i class="bi bi-list-check" style="color:var(--accent);font-size:15px"></i>
           <span style="font-size:13px;font-weight:700;color:var(--text)">Recommended Actions</span>
@@ -1338,7 +1383,6 @@ async function runCompare() {
     loader.classList.add('d-none');
   }
 }
-
 // ── Video Analysis ────────────────────────────────────────────────
 function switchVTab(tab, btn) {
   document.querySelectorAll('.vtab').forEach(b => b.classList.remove('active'));
@@ -1424,6 +1468,8 @@ async function runVideoAnalysis() {
     if (b) { b.disabled=false; b.innerHTML='<i class="bi bi-search"></i> Detect Missing Objects'; }
   }
 }
+
+
 
 // ── Camera ────────────────────────────────────────────────────────
 function generateMobileQR() {
@@ -2312,7 +2358,7 @@ function navigateToArtifact(artifactId, artifactName) {
 
     if (!found) {
       // Artifact might not be visible due to search filter — clear and search by name
-      const searchEl = document.getElementById('artifactSearch');
+      const searchEl = document.getElementById('artSearch');
       if (searchEl) {
         searchEl.value = artifactName;
         searchEl.dispatchEvent(new Event('input'));
@@ -3770,15 +3816,24 @@ async function loadAuditLogs(page = 1) {
             + `&date_from=${dateFrom}&date_to=${dateTo}`;
   try {
     const r = await api(url);
-    if (r.status === 403) {
-      document.getElementById('auditTableWrap').innerHTML =
-        '<p style="color:var(--muted);padding:24px;text-align:center">Admin access required</p>';
-      return;
-    }
     const d = await r.json();
     renderAuditTable(d);
     populateAuditUserFilter(d.users || []);
-  } catch(e) { console.error('Audit load error', e); }
+  } catch(e) { 
+    console.error('Audit load error:', e); 
+    // Handle the thrown 403 error from the global api helper gracefully
+    if (e.message === '403') {
+      const wrap = document.getElementById('auditTableWrap');
+      if (wrap) {
+        wrap.innerHTML = `
+          <div style="text-align:center;padding:40px;color:var(--muted)">
+            <i class="bi bi-shield-lock" style="font-size:36px;color:#f87171;display:block;margin-bottom:10px"></i>
+            <p style="font-weight:700;color:var(--text)">Access Forbidden</p>
+            <p style="font-size:12px;margin-top:4px">Administrative privileges are required to view the system compliance logs.</p>
+          </div>`;
+      }
+    }
+  }
 }
 
 function renderAuditTable(d) {

@@ -88,11 +88,33 @@ def predict_damage(preprocessed_image: np.ndarray) -> dict:
         }
 
 
-def compute_severity_index(damage_prob: float, fading_score: float, edge_density: float) -> float:
-    """Composite 0–10 severity index."""
-    score = (damage_prob * 0.40 + fading_score * 0.35 + edge_density * 0.25) * 10
-    return round(min(10.0, max(0.0, score)), 2)
+#def compute_severity_index(damage_prob: float, fading_score: float, edge_density: float) -> float:
+ #   """Composite 0–10 severity index."""
+  #  score = (damage_prob * 0.40 + fading_score * 0.35 + edge_density * 0.25) * 10
+   # return round(min(10.0, max(0.0, score)), 2)
 
+def compute_severity_index(damage_prob, fading_score, edge_density):
+    """
+    Computes a composite severity score (0 to 10) with short-circuit overrides
+    so high independent threats aren't diluted by low companion features.
+    """
+    # 1. Calculate the base weighted score as a baseline
+    base_score = (damage_prob * 0.40 + fading_score * 0.35 + edge_density * 0.25) * 10
+    
+    # 2. SHORT-CIRCUIT: If the AI model detects clear structural damage,
+    # enforce a high minimum baseline so it can't be dragged down.
+    if damage_prob >= 0.85:
+        # Instantly forces the score into the CRITICAL zone (>= 8.0)
+        return max(8.5, base_score)
+    elif damage_prob >= 0.60:
+        # Instantly forces the score into the HIGH risk zone (>= 6.0)
+        return max(6.5, base_score)
+        
+    # 3. Handle edge cases where extreme cracking lines are present
+    if edge_density > 0.06:
+        return max(7.5, base_score)
+
+    return min(10.0, max(0.0, base_score))
 
 def classify_severity(severity_index: float) -> str:
     if severity_index >= 8:  return "CRITICAL"
@@ -333,6 +355,10 @@ def analyze_video_for_missing(video_path: str, expected_objects: list) -> dict:
         if n_missing > 0:
             missing_objects  = expected_objects[-n_missing:]
             detected_objects = expected_objects[:-n_missing]
+    else:
+        if object_loss >= 0.8 or sig_pct > 4.5:
+            lost_count = max(1, round(object_loss)) if object_loss >= 0.8 else 1
+            missing_objects = ["Artifact Item (auto-detected)"] * lost_count
 
     return {
         "missing_objects":    missing_objects,
