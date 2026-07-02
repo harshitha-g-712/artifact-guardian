@@ -43,6 +43,9 @@
   <li><a href="#" class="nav-link" data-section="heatmap" data-min-role="viewer"><i class="bi bi-grid-3x3-gap-fill"></i><span>Risk Heatmap</span></a></li>
   <li><a href="#" class="nav-link" data-section="alerts" data-min-role="viewer"><i class="bi bi-bell-fill"></i><span>Alerts</span><span class="nav-badge" id="alertBadge">0</span></a></li>
   <li><a href="#" class="nav-link" data-section="reports" data-min-role="curator"><i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span></a></li>
+  <li class="nav-label">ACCOUNT</li>
+  <li><a href="#" class="nav-link" data-section="profile" data-min-role="viewer"><i class="bi bi-person-circle"></i><span>My Profile</span></a></li>
+  <li><a href="#" class="nav-link" data-section="roleGuide" data-min-role="viewer"><i class="bi bi-info-circle-fill"></i><span>Role Guide</span></a></li>
   <li class="nav-label admin-only">ADMIN</li>
   <li class="admin-only"><a href="#" class="nav-link" data-section="users" data-min-role="admin"><i class="bi bi-people-fill"></i><span>Users</span></a></li>
   <li class="admin-only"><a href="#" class="nav-link" data-section="import" data-min-role="admin"><i class="bi bi-upload"></i><span>Import / Export</span></a></li>
@@ -1436,7 +1439,7 @@
 
 
 
-</div><!-- /.main-content -->
+
 
 <!-- ══ MODALS ═══════════════════════════════════════════════════ -->
 
@@ -1619,11 +1622,270 @@
     </div>
   </div>
 </div>
+<section class="content-section" id="section-profile">
+  <div class="mb-4" style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <div>
+      <h2 class="section-title"><i class="bi bi-person-circle"></i> My Profile</h2>
+      <p class="section-sub">Your account details and access summary</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <a href="#" onclick="showSection('roleGuide');return false" style="font-size:13px;color:var(--accent);text-decoration:none">
+        <i class="bi bi-key-fill"></i> View role permissions
+      </a>
+     <!-- <button class="btn-outline" onclick="openEditProfile()">
+        <i class="bi bi-pencil-square"></i> Edit Profile
+      </button>
+      <button class="btn-outline" onclick="openChangePassword()">
+        <i class="bi bi-key"></i> Change Password
+      </button>
+    -->
+    </div>
+  </div>
+
+  <div class="chart-card mb-4" style="padding:24px">
+    <div style="display:flex;align-items:center;gap:18px;margin-bottom:22px;flex-wrap:wrap">
+      <div class="user-avatar" id="profileAvatar" style="width:64px;height:64px;font-size:26px">A</div>
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="font-size:20px;font-weight:600;color:var(--text)" id="profileName">—</div>
+          <span id="profileStatusPill" style="display:inline-flex;align-items:center;gap:5px;
+            font-size:11px;font-weight:600;color:#4ade80;padding:2px 9px;border-radius:20px;
+            background:rgba(74,222,128,.12)">
+            <i class="bi bi-check-circle-fill"></i> Active
+          </span>
+        </div>
+        <div style="color:var(--muted);font-size:13px;margin-top:2px" id="profileUsername">—</div>
+        <span id="profileRoleBadge" class="role-badge" style="margin-top:6px;display:inline-block"></span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px">
+      <div>
+        <div style="color:var(--muted);font-size:12px;text-transform:uppercase;margin-bottom:4px">Email</div>
+        <div style="color:var(--text);font-size:14px" id="profileEmail">—</div>
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:12px;text-transform:uppercase;margin-bottom:4px">Role</div>
+        <div style="color:var(--text);font-size:14px" id="profileRole">—</div>
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:12px;text-transform:uppercase;margin-bottom:4px">Username</div>
+        <div style="color:var(--text);font-size:14px" id="profileUsername2">—</div>
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:12px;text-transform:uppercase;margin-bottom:4px">Member Since</div>
+        <div style="color:var(--text);font-size:14px" id="profileMemberSince">—</div>
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:12px;text-transform:uppercase;margin-bottom:4px">Last Login</div>
+        <div style="color:var(--text);font-size:14px" id="profileLastLogin">—</div>
+      </div>
+    </div>
+  </div>
+</section>
+<!--
+ Edit Profile Modal 
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content mc">
+      <div class="mhdr">
+        <h5><i class="bi bi-pencil-square me-2" style="color:var(--accent)"></i>Edit Profile</h5>
+        <button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="mbody">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="flabel">Full Name</label>
+            <input type="text" class="finput" id="editMyFullName" placeholder="Full name"/>
+          </div>
+          <div class="col-12">
+            <label class="flabel">Email</label>
+            <input type="email" class="finput" id="editMyEmail" placeholder="Email address"/>
+          </div>
+          <div class="col-12">
+            <label class="flabel">Username</label>
+            <input type="text" class="finput" id="editMyUsername" readonly
+              style="opacity:.6;cursor:not-allowed"/>
+          </div>
+        </div>
+        <div style="margin-top:14px;padding:10px 14px;background:var(--bg2);border-radius:8px;
+          font-size:12px;color:var(--muted)">
+          <i class="bi bi-info-circle" style="color:var(--accent);margin-right:6px"></i>
+          Username and role can only be changed by an administrator.
+        </div>
+      </div>
+      <div class="mftr">
+        <button class="btn-outline" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-primary" onclick="saveEditProfile()">
+          <i class="bi bi-check2"></i> Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+-->
+<!-- Change Password Modal 
+<div class="modal fade" id="changePwModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content mc">
+      <div class="mhdr">
+        <h5><i class="bi bi-key me-2" style="color:var(--accent)"></i>Change Password</h5>
+        <button class="mbtn-x" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="mbody">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="flabel">Current Password <span style="color:#f87171">*</span></label>
+            <div style="position:relative">
+              <input type="password" class="finput" id="changePwCurrent" placeholder="Enter current password"
+                style="padding-right:44px"/>
+              <button type="button" onclick="togglePwVisibility('changePwCurrent',this)"
+                style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                  background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;
+                  padding:0;display:flex;align-items:center">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="flabel">New Password <span style="color:#f87171">*</span></label>
+            <div style="position:relative">
+              <input type="password" class="finput" id="changePwNew" placeholder="Min 6 characters"
+                style="padding-right:44px"/>
+              <button type="button" onclick="togglePwVisibility('changePwNew',this)"
+                style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                  background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;
+                  padding:0;display:flex;align-items:center">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="flabel">Confirm New Password <span style="color:#f87171">*</span></label>
+            <div style="position:relative">
+              <input type="password" class="finput" id="changePwConfirm" placeholder="Repeat new password"
+                style="padding-right:44px"/>
+              <button type="button" onclick="togglePwVisibility('changePwConfirm',this)"
+                style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                  background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;
+                  padding:0;display:flex;align-items:center">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mftr">
+        <button class="btn-outline" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-primary" onclick="saveChangePassword()">
+          <i class="bi bi-check2"></i> Update Password
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+-->
+<section class="content-section" id="section-roleGuide">
+  <div class="mb-4">
+    <h2 class="section-title"><i class="bi bi-info-circle-fill"></i> Role Guide</h2>
+    <p class="section-sub">What each role can see and do in Artifact Guardian</p>
+  </div>
+
+  <div id="roleGuideGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px">
+    <div class="chart-card role-guide-card" data-role="Viewer" style="padding:20px;position:relative">
+      <span class="role-guide-you" style="display:none;position:absolute;top:14px;right:14px;font-size:10px;
+        font-weight:700;letter-spacing:.5px;color:var(--accent)">
+        <i class="bi bi-star-fill"></i> YOUR ROLE
+      </span>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span class="role-badge viewer">Viewer</span>
+      </div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:10px">Read-only access to records and analytics.</p>
+      <ul style="color:var(--text);font-size:13px;padding-left:18px;margin:0">
+        <li>Dashboard, Artifacts, Inspections, Gallery</li>
+        <li>Trends, Risk Heatmap, Alerts</li>
+      </ul>
+    </div>
+    <div class="chart-card role-guide-card" data-role="Analyst" style="padding:20px;position:relative">
+      <span class="role-guide-you" style="display:none;position:absolute;top:14px;right:14px;font-size:10px;
+        font-weight:700;letter-spacing:.5px;color:var(--accent)">
+        <i class="bi bi-star-fill"></i> YOUR ROLE
+      </span>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span class="role-badge analyst">Analyst</span>
+      </div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:10px">Viewer access plus AI tools and reporting.</p>
+      <ul style="color:var(--text);font-size:13px;padding-left:18px;margin:0">
+        <li>Everything in Viewer</li>
+        <li>AI Analyze, Compare, Reports</li>
+      </ul>
+    </div>
+    <div class="chart-card role-guide-card" data-role="Curator" style="padding:20px;position:relative">
+      <span class="role-guide-you" style="display:none;position:absolute;top:14px;right:14px;font-size:10px;
+        font-weight:700;letter-spacing:.5px;color:var(--accent)">
+        <i class="bi bi-star-fill"></i> YOUR ROLE
+      </span>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span class="role-badge curator">Curator</span>
+      </div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:10px">Analyst access plus content and shipment management.</p>
+      <ul style="color:var(--text);font-size:13px;padding-left:18px;margin:0">
+        <li>Everything in Analyst</li>
+        <li>Video / Camera, QR Scanner, Shipments</li>
+      </ul>
+    </div>
+    <div class="chart-card role-guide-card" data-role="Admin" style="padding:20px;position:relative">
+      <span class="role-guide-you" style="display:none;position:absolute;top:14px;right:14px;font-size:10px;
+        font-weight:700;letter-spacing:.5px;color:var(--accent)">
+        <i class="bi bi-star-fill"></i> YOUR ROLE
+      </span>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span class="role-badge admin">Admin</span>
+      </div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:10px">Full system access, including user and data management.</p>
+      <ul style="color:var(--text);font-size:13px;padding-left:18px;margin:0">
+        <li>Everything in Curator</li>
+        <li>Users, Import / Export, Audit Log</li>
+      </ul>
+    </div>
+  </div>
+<!--
+  <div class="chart-hdr mt-4 mb-3">
+    <i class="bi bi-table" style="color:var(--accent)"></i>
+    Full permission matrix
+  </div>
+  <div class="chart-card" style="padding:0;overflow-x:auto">
+    <table id="roleMatrixTable" style="width:100%;border-collapse:collapse;font-size:13px;min-width:560px">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:12px 16px;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase">Feature</th>
+          <th class="rm-col" data-col="Viewer"  style="text-align:center;padding:12px 10px"><span class="role-badge viewer">Viewer</span></th>
+          <th class="rm-col" data-col="Analyst" style="text-align:center;padding:12px 10px"><span class="role-badge analyst">Analyst</span></th>
+          <th class="rm-col" data-col="Curator" style="text-align:center;padding:12px 10px"><span class="role-badge curator">Curator</span></th>
+          <th class="rm-col" data-col="Admin"   style="text-align:center;padding:12px 10px"><span class="role-badge admin">Admin</span></th>
+        </tr>
+      </thead>
+      <tbody id="roleMatrixBody"></tbody>
+    </table>
+  </div>
+-->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+    margin-top:14px;padding:12px 16px;background:var(--bg2);border-radius:8px">
+    <div style="font-size:12px;color:var(--muted)">
+      <i class="bi bi-info-circle" style="color:var(--accent);margin-right:6px"></i>
+      Need a different access level? Ask an Admin or Head Curator to update your role from
+      <strong style="color:var(--text)">User Management</strong>.
+    </div>
+    <div style="font-size:11px;color:var(--muted)" id="roleGuideUpdated">Last reviewed —</div>
+  </div>
+</section>
+
 <div id="accessDeniedPanel" class="panel text-center style-card" style="display:none; margin: 40px auto; max-width: 500px; padding: 40px 24px;">
   <i class="bi bi-shield-lock-fill" style="font-size: 48px; color: var(--red);"></i>
   <h3 class="mt-3" style="color: var(--text);">Access Denied</h3>
   <p style="color: var(--muted); font-size: 14px;">Your current security access profile status level (<strong id="deniedRoleLabel" style="color: var(--accent);"></strong>) does not hold the necessary permissions required to inspect this management screen view.</p>
   <button class="btn-primary mt-2" onclick="showSection('dashboard')">Return to Dashboard</button>
 </div>
+</div><!-- /.main-content -->
 </body>
 </html>

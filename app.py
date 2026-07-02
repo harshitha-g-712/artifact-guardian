@@ -48,6 +48,13 @@ def create_app() -> Flask:
     def mobile_camera():
         return send_from_directory(app.template_folder, "mobile_camera.html")
 
+    # QR scan redirect route
+    @app.route("/scan/<int:artifact_id>")
+    def scan_artifact(artifact_id):
+        # Redirect to SPA — JS handles showing the artifact
+        from flask import redirect
+        return redirect(f"/?scan={artifact_id}")
+
     # SPA catch-all
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")

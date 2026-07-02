@@ -8,7 +8,7 @@ import json
 import math
 from datetime import datetime, timedelta
 
-from flask import Blueprint, request, jsonify, current_app, send_file, session
+from flask import Blueprint, request, jsonify, current_app, send_file, session, make_response
 from werkzeug.utils import secure_filename
 
 from backend.models.database import (
@@ -19,7 +19,7 @@ from backend.models.database import (
     save_inspection_image, get_inspection_images,
     save_video_inspection, get_video_inspections,
     get_alerts, create_alert, mark_alert_read, mark_all_alerts_read,
-    get_shipments, create_shipment,
+    get_shipments, create_shipment, update_shipment,
     get_dashboard_stats, get_user_by_id,
 )
 from backend.utils.preprocessing import (
@@ -36,6 +36,7 @@ from backend.utils.email_service import (
 from backend.utils.auth import login_required, require_role
 from backend.utils.export_service import (
     export_inspections_excel, export_report_pdf, import_artifacts_from_csv,
+    import_inspections_from_csv,
 )
 def log_action(action: str, artifact_id=None, artifact_name=None, details=None):
     """
@@ -88,7 +89,7 @@ def _save_file(file, allowed):
         return None, None
     ext = file.filename.rsplit(".", 1)[1].lower()
     fname = f"{uuid.uuid4().hex}.{ext}"
-    fpath = _upload_dir().rstrip('/\\') + '/' + fname
+    fpath = os.path.join(_upload_dir(), fname)
     data = file.read()
     with open(fpath, "wb") as f:
         f.write(data)
@@ -579,6 +580,23 @@ def add_shipment():
     return jsonify({"shipment_id": new_id, "status": "created"}), 201
 
 
+@api.patch("/shipments/<int:shipment_id>")
+@login_required
+@require_role("Admin", "Curator")
+def patch_shipment(shipment_id):
+    d = request.get_json(force=True)
+    status = d.get("status")
+    if not status:
+        return jsonify({"error": "status is required"}), 400
+    update_shipment(
+        shipment_id, status,
+        notes=d.get("notes", ""),
+        condition_on_arrival=d.get("condition_on_arrival"),
+    )
+    log_action("Shipment Updated", details=f"shipment_id:{shipment_id} status:{status}")
+    return jsonify({"status": "updated"})
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @api.get("/dashboard/stats")
@@ -684,6 +702,47 @@ def import_csv():
     })
 
 
+@api.post("/import/inspections/csv")
+@login_required
+@require_role("Admin")
+def import_inspections_csv():
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    raw = request.files["file"].read()
+    try:
+        rows = import_inspections_from_csv(raw)
+    except Exception as e:
+        return jsonify({"error": f"CSV parse error: {e}"}), 400
+
+    created = []
+    row_errors = []
+    for row in rows:
+        if not get_artifact(row["artifact_id"]):
+            row_errors.append({"artifact_id": row["artifact_id"], "error": "Artifact not found"})
+            continue
+        try:
+            new_id = save_inspection(
+                row["artifact_id"],
+                crack_detected=row["crack_detected"],
+                fading_level=row["fading_level"],
+                severity_index=row["severity_index"],
+                damage_notes=row["damage_notes"],
+                inspection_type=row["inspection_type"],
+                inspector_id=session.get("user_id"),
+                inspection_date=row["inspection_date"],
+            )
+            created.append(new_id)
+        except Exception as e:
+            row_errors.append({"artifact_id": row["artifact_id"], "error": str(e)})
+
+    log_action("Inspections Imported", details=f"count:{len(created)}")
+    return jsonify({
+        "imported": len(created),
+        "ids": created,
+        "row_errors": row_errors,
+    })
+
+
 # ── Gallery ───────────────────────────────────────────────────────────────────
 
 @api.get("/artifacts/<int:aid>/gallery")
@@ -706,14 +765,7 @@ def gallery(aid):
     return jsonify(images)
 
 
-# ── Users (admin) ─────────────────────────────────────────────────────────────
 
-@api.get("/users")
-@login_required
-@require_role("Admin")
-def list_users():
-    from backend.models.database import get_all_users
-    return jsonify(get_all_users())
 
 # ════════════════════════════════════════════════════════════
 # FEATURE 1: ARTIFACT DNA FINGERPRINTING

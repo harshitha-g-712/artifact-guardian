@@ -3,8 +3,9 @@ auth_routes.py  —  Login / logout / register / user management
 """
 from flask import Blueprint, request, jsonify, session
 from backend.models.database import (
-    get_user_by_username, create_user, get_all_users,
-    update_last_login, update_user, update_user_password, set_user_active,
+    get_user_by_username, get_user_by_id, create_user, get_all_users,
+    update_last_login, update_user, update_own_profile,
+    update_user_password, set_user_active,
 )
 from backend.utils.auth import hash_password, verify_password, login_required, role_required
 
@@ -61,6 +62,7 @@ def login():
     session["username"]  = user["username"]
     session["role_name"] = user["role_name"]
     session["full_name"] = user.get("full_name", "")
+    session["email"]     = user.get("email", "")
     session["can_admin"] = user.get("can_admin", False)
     session["can_delete"]= user.get("can_delete", False)
 
@@ -75,6 +77,7 @@ def login():
             "user_id":   user["user_id"],
             "username":  user["username"],
             "full_name": user.get("full_name", ""),
+            "email":     user.get("email", ""),
             "role":      user["role_name"],
             "can_admin": user.get("can_admin", False),
             "can_delete":user.get("can_delete", False),
@@ -99,6 +102,7 @@ def me():
     role        = session.get("role_name", "")
     is_power    = role in ("Admin", "Curator")
     is_analyst  = role in ("Admin", "Curator", "Analyst")
+    fresh       = get_user_by_id(session["user_id"])
 
     permissions = {
         "can_analyze":          is_analyst,   # Analyst, Curator, Admin
@@ -119,9 +123,13 @@ def me():
         "username":    session["username"],
         "role":        role,
         "full_name":   session.get("full_name", ""),
+        "email":       session.get("email", ""),
         "can_admin":   session.get("can_admin", False),
         "can_delete":  session.get("can_delete", False),
         "permissions": permissions,
+        "created_at":  fresh.get("created_at") if fresh else None,
+        "last_login":  fresh.get("last_login") if fresh else None,
+        "is_active":   bool(fresh.get("is_active", True)) if fresh else True,
     })
 
 
@@ -144,6 +152,50 @@ def register():
         return jsonify({"user_id": uid, "status": "created"}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 409
+
+
+@auth_bp.put("/profile")
+@login_required
+def update_profile():
+    """Self-service: the logged-in user edits their own name/email.
+    Deliberately does not touch role_id or is_active — only an Admin
+    can change those, via PUT /api/auth/users/<id>."""
+    data      = request.get_json(force=True)
+    full_name = (data.get("full_name") or "").strip()
+    email     = (data.get("email") or "").strip()
+    if not full_name or not email:
+        return jsonify({"error": "Full name and email are required"}), 400
+
+    user_id = session["user_id"]
+    update_own_profile(user_id, full_name, email)
+
+    # Keep the session in sync so other pages reflect the change immediately
+    session["full_name"] = full_name
+    session["email"]     = email
+
+    log_action("Profile Updated", details=f"user_id:{user_id}")
+    return jsonify({"status": "updated", "full_name": full_name, "email": email})
+
+
+@auth_bp.post("/change-password")
+@login_required
+def change_password():
+    data    = request.get_json(force=True)
+    current = data.get("current_password", "")
+    new_pw  = data.get("new_password", "")
+    if not current or not new_pw:
+        return jsonify({"error": "Current and new password are required"}), 400
+    if len(new_pw) < 6:
+        return jsonify({"error": "New password must be at least 6 characters"}), 400
+
+    user = get_user_by_id(session["user_id"])
+    if not user or not verify_password(current, user["password_hash"]):
+        return jsonify({"error": "Current password is incorrect"}), 401
+
+    pw_hash = hash_password(new_pw)
+    update_user_password(session["user_id"], pw_hash)
+    log_action("Password Changed", details=f"user_id:{session['user_id']}")
+    return jsonify({"status": "password updated"})
 
 
 @auth_bp.get("/users")

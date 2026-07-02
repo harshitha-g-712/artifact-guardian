@@ -217,3 +217,34 @@ def import_artifacts_from_csv(file_bytes: bytes) -> list:
 
         })
     return artifacts
+
+
+def import_inspections_from_csv(file_bytes: bytes) -> list:
+    """Parse a CSV of inspections. Expected columns match the frontend
+    template: artifact_id,inspection_date,inspection_type,crack_detected,
+    fading_level,severity_index,damage_notes"""
+    text = file_bytes.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text))
+    inspections = []
+    for row in reader:
+        aid_raw = row.get("artifact_id", "").strip()
+        if not aid_raw:
+            continue
+        try:
+            artifact_id = int(aid_raw)
+        except ValueError:
+            continue
+
+        crack_raw = row.get("crack_detected", "0").strip().lower()
+        crack_detected = crack_raw in ("1", "true", "yes", "y")
+
+        inspections.append({
+            "artifact_id":      artifact_id,
+            "inspection_date":  row.get("inspection_date", "").strip() or None,
+            "inspection_type":  row.get("inspection_type", "Routine").strip() or "Routine",
+            "crack_detected":   crack_detected,
+            "fading_level":     float(row.get("fading_level", 0) or 0),
+            "severity_index":   float(row.get("severity_index", 0) or 0),
+            "damage_notes":     row.get("damage_notes", "").strip(),
+        })
+    return inspections

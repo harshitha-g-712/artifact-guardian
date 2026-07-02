@@ -114,6 +114,17 @@ def update_user(user_id, full_name, email, alert_email, role_id, is_active=None)
     cur.close(); conn.close()
 
 
+def update_own_profile(user_id, full_name, email):
+    """Self-service profile update — only touches name/email, never role or status."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE users SET full_name=%s, email=%s WHERE user_id=%s",
+        (full_name, email, user_id))
+    conn.commit()
+    cur.close(); conn.close()
+
+
 def update_user_password(user_id, password_hash):
     conn = get_connection()
     cur = conn.cursor()
@@ -251,16 +262,25 @@ def get_inspection(inspection_id):
 
 def save_inspection(artifact_id, image_path=None, crack_detected=False, fading_level=0,
                     severity_index=0, damage_notes="", ai_report="", inspection_type='Routine',
-                    inspector_id=None):
+                    inspector_id=None, inspection_date=None):
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute(
-        """INSERT INTO inspections
-           (artifact_id, inspector_id, inspection_date, inspection_type,
-            crack_detected, fading_level, severity_index, damage_notes, ai_report)
-           VALUES (%s, %s, CURDATE(), %s, %s, %s, %s, %s, %s)""",
-        (artifact_id, inspector_id, inspection_type, crack_detected,
-         fading_level, severity_index, damage_notes, ai_report))
+    if inspection_date:
+        cur.execute(
+            """INSERT INTO inspections
+               (artifact_id, inspector_id, inspection_date, inspection_type,
+                crack_detected, fading_level, severity_index, damage_notes, ai_report)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (artifact_id, inspector_id, inspection_date, inspection_type, crack_detected,
+             fading_level, severity_index, damage_notes, ai_report))
+    else:
+        cur.execute(
+            """INSERT INTO inspections
+               (artifact_id, inspector_id, inspection_date, inspection_type,
+                crack_detected, fading_level, severity_index, damage_notes, ai_report)
+               VALUES (%s, %s, CURDATE(), %s, %s, %s, %s, %s, %s)""",
+            (artifact_id, inspector_id, inspection_type, crack_detected,
+             fading_level, severity_index, damage_notes, ai_report))
     conn.commit()
     new_id = cur.lastrowid
     cur.close(); conn.close()
@@ -435,6 +455,22 @@ def create_shipment(artifact_id, origin, destination, shipment_date,
     new_id = cur.lastrowid
     cur.close(); conn.close()
     return new_id
+
+
+def update_shipment(shipment_id, status, notes=None, condition_on_arrival=None):
+    conn = get_connection()
+    cur = conn.cursor()
+    if condition_on_arrival is not None:
+        cur.execute(
+            """UPDATE shipments SET status=%s, notes=%s, condition_on_arrival=%s
+               WHERE shipment_id=%s""",
+            (status, notes, condition_on_arrival, shipment_id))
+    else:
+        cur.execute(
+            "UPDATE shipments SET status=%s, notes=%s WHERE shipment_id=%s",
+            (status, notes, shipment_id))
+    conn.commit()
+    cur.close(); conn.close()
 
 
 # ── Dashboard Stats ────────────────────────────────────────────────────────────

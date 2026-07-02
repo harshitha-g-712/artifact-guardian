@@ -62,7 +62,7 @@
 
 /* ── Reset ───────────────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;overflow-x:hidden}
 body{
   background:var(--bg);
   color:var(--text);
@@ -286,6 +286,7 @@ body::after{
   min-height:100vh;
   transition:margin var(--t);
   position:relative;z-index:1;
+  overflow-x:hidden;
 }
 .content-section{display:none;padding:28px 32px;animation:fadeUp .3s ease}
 .content-section.active{display:block}
@@ -924,6 +925,10 @@ textarea.finput{resize:vertical;min-height:80px}
 /* Sidebar role badge / admin-only */
 .role-badge{display:inline-block;font-size:9px;padding:1px 7px;border-radius:10px;
   background:var(--accent-dim);color:var(--accent);font-weight:700;letter-spacing:.5px}
+.role-badge.viewer  {background:var(--blue-a);   color:#60a5fa}
+.role-badge.analyst {background:var(--green-a);  color:#4ade80}
+.role-badge.curator {background:var(--amber-a);  color:#fbbf24}
+.role-badge.admin   {background:var(--purple-a); color:#a78bfa}
 .admin-only{display:block}
 
 /* Analyze section */
@@ -1479,6 +1484,17 @@ textarea.finput{resize:vertical;min-height:80px}
 .modal-content textarea,
 .modal-content button,
 .modal-content a { pointer-events: auto !important; cursor: auto; }
+
+/* Belt-and-suspenders fix: guarantee these two modals' fields are always
+   clickable/typable regardless of any inherited stacking context. */
+#editProfileModal, #changePwModal { z-index: 1060; }
+#editProfileModal .modal-content, #changePwModal .modal-content { position: relative; z-index: 1061; }
+#editProfileModal input, #changePwModal input,
+#editProfileModal button, #changePwModal button {
+  position: relative; z-index: 1062;
+  pointer-events: auto !important;
+  user-select: text !important;
+}
 .modal-content select { cursor: pointer !important; }
 .modal-content button { cursor: pointer !important; }
 

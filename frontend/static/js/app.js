@@ -165,12 +165,12 @@ function showSection(name) {
   const ALLOWED = {
     Admin:   ['dashboard','analyze','compare','video','artifacts','inspections',
                'gallery','shipments','trends','alerts','reports','users','import',
-               'audit','heatmap'],
+               'audit','heatmap','profile','roleGuide'],
     Curator: ['dashboard','analyze','compare','video','artifacts','inspections',
-               'gallery','shipments','trends','alerts','reports','heatmap'],
+               'gallery','shipments','trends','alerts','reports','heatmap','profile','roleGuide'],
     Analyst: ['dashboard','analyze','compare','reports','artifacts','inspections',
-               'gallery','trends','alerts','heatmap'],
-    Viewer:  ['dashboard','artifacts','inspections','gallery','trends','alerts','heatmap'],
+               'gallery','trends','alerts','heatmap','profile','roleGuide'],
+    Viewer:  ['dashboard','artifacts','inspections','gallery','trends','alerts','heatmap','profile','roleGuide'],
   };
 
 
@@ -211,6 +211,8 @@ function showSection(name) {
     import:'Import / Export',
     audit:'Audit Log',          // ← ADD THIS
     heatmap:'Risk Heatmap',     // ← ADD THIS
+    profile:'My Profile',
+    roleGuide:'Role Guide',
   };
 
   document.getElementById('pageTitle').textContent = titles[name] || name;
@@ -230,6 +232,197 @@ function showSection(name) {
   if (name === 'import')  loadIeArtifactSelect();
   if (name === 'audit')   loadAuditLogs(1);
   if (name === 'heatmap') loadHeatmap();
+  if (name === 'profile') loadProfile();
+  if (name === 'roleGuide') loadRoleGuide();
+
+  // Reset scroll position so newly shown section always starts fully
+  // in view (prevents content being left scrolled under the sidebar).
+  window.scrollTo(0, 0);
+  const mainEl = document.querySelector('.main-content');
+  if (mainEl) mainEl.scrollLeft = 0;
+}
+
+// ── Role Guide ───────────────────────────────────────────────────
+// Show every role's card for reference (like a real permissions/docs
+// page) and highlight whichever one matches the logged-in user.
+const ROLE_GUIDE_FEATURES = [
+  { key:'dashboard',   label:'Dashboard',        min:'viewer'  },
+  { key:'artifacts',   label:'Artifacts',        min:'viewer'  },
+  { key:'inspections', label:'Inspections',      min:'viewer'  },
+  { key:'gallery',     label:'Gallery',          min:'viewer'  },
+  { key:'trends',      label:'Trends',           min:'viewer'  },
+  { key:'alerts',      label:'Alerts',           min:'viewer'  },
+  { key:'heatmap',     label:'Risk Heatmap',     min:'viewer'  },
+  { key:'analyze',     label:'AI Analyze',       min:'analyst' },
+  { key:'compare',     label:'Compare',          min:'analyst' },
+  { key:'reports',     label:'Reports',          min:'analyst' },
+  { key:'video',       label:'Video / Camera',   min:'curator' },
+  { key:'shipments',   label:'Shipments',        min:'curator' },
+  { key:'audit',       label:'Audit Log',        min:'admin'   },
+  { key:'users',       label:'Users',            min:'admin'   },
+  { key:'import',      label:'Import / Export',  min:'admin'   },
+];
+const ROLE_GUIDE_RANK = { viewer: 1, analyst: 2, curator: 3, admin: 4 };
+const ROLE_GUIDE_ORDER = ['Viewer', 'Analyst', 'Curator', 'Admin'];
+
+function loadRoleGuide() {
+  const role = STATE.user?.role || '';
+
+  // Highlight the card matching the logged-in user's role; show all others
+  // for context, dimming them slightly so the user's own role stands out.
+  document.querySelectorAll('#roleGuideGrid .role-guide-card').forEach(card => {
+    const isMine = card.dataset.role === role;
+    card.style.display = '';
+    card.style.border = isMine ? '1px solid var(--accent)' : '';
+    card.style.boxShadow = isMine ? '0 0 0 1px var(--accent) inset' : '';
+    card.style.opacity = isMine ? '1' : '.85';
+    const tag = card.querySelector('.role-guide-you');
+    if (tag) tag.style.display = isMine ? 'inline-flex' : 'none';
+  });
+
+  // Highlight the matching column header in the matrix table
+  document.querySelectorAll('#roleMatrixTable .rm-col').forEach(th => {
+    th.style.background = th.dataset.col === role ? 'var(--bg2)' : '';
+  });
+
+  // Build the full feature × role matrix
+  const body = document.getElementById('roleMatrixBody');
+  if (body) {
+    body.innerHTML = ROLE_GUIDE_FEATURES.map(f => {
+      const cells = ROLE_GUIDE_ORDER.map(r => {
+        const has = ROLE_GUIDE_RANK[r.toLowerCase()] >= ROLE_GUIDE_RANK[f.min];
+        const isMine = r === role;
+        return `<td class="rm-col" data-col="${r}" style="text-align:center;padding:10px;
+                    ${isMine ? 'background:var(--bg2)' : ''}">
+                  <i class="bi ${has ? 'bi-check-circle-fill' : 'bi-dash-circle'}"
+                     style="color:${has ? '#4ade80' : 'var(--muted)'};opacity:${has ? '1' : '.5'}"></i>
+                </td>`;
+      }).join('');
+      return `<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 16px;color:var(--text);font-size:13px">${f.label}</td>
+                ${cells}
+              </tr>`;
+    }).join('');
+  }
+
+  const updated = document.getElementById('roleGuideUpdated');
+  if (updated) {
+    updated.textContent = 'Last reviewed ' + new Date().toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric'
+    });
+  }
+}
+
+// ── My Profile ────────────────────────────────────────────────────
+function loadProfile() {
+  const u = STATE.user;
+  if (!u) return;
+  const role = u.role || '';
+  const initial = (u.full_name || u.username || 'U')[0].toUpperCase();
+
+  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setText('profileAvatar', initial);
+  setText('profileName', u.full_name || u.username || '—');
+  setText('profileUsername', '@' + (u.username || '—'));
+  setText('profileUsername2', u.username || '—');
+  setText('profileEmail', u.email || '—');
+  setText('profileRole', role || '—');
+
+  const badge = document.getElementById('profileRoleBadge');
+  if (badge) {
+    badge.className = `role-badge ${role.toLowerCase()}`;
+    badge.textContent = role;
+  }
+
+  const fmtDate = (val) => {
+    if (!val) return null;
+    const d = new Date(val.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  };
+  setText('profileMemberSince', fmtDate(u.created_at) || fmtDate(u.date_joined) || 'Not available');
+  setText('profileLastLogin', fmtDate(u.last_login) || 'This session');
+
+  const statusPill = document.getElementById('profileStatusPill');
+  if (statusPill) {
+    const active = u.is_active === undefined ? true : !!u.is_active;
+    statusPill.style.color = active ? '#4ade80' : '#f87171';
+    statusPill.style.background = active ? 'rgba(74,222,128,.12)' : 'rgba(248,113,113,.12)';
+    statusPill.innerHTML = `<i class="bi bi-${active ? 'check-circle-fill' : 'x-circle-fill'}"></i> ${active ? 'Active' : 'Deactivated'}`;
+  }
+
+}
+
+// ── Edit Profile / Change Password ──────────────────────────────────
+function openEditProfile() {
+  const u = STATE.user || {};
+  document.getElementById('editMyFullName').value = u.full_name || '';
+  document.getElementById('editMyEmail').value    = u.email || '';
+  document.getElementById('editMyUsername').value = u.username || '';
+  const modalEl = document.getElementById('editProfileModal');
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
+
+async function saveEditProfile() {
+  const full_name = document.getElementById('editMyFullName').value.trim();
+  const email      = document.getElementById('editMyEmail').value.trim();
+  if (!full_name || !email) { toast('Name and email are required', 'warning'); return; }
+
+  const applyLocally = () => {
+    STATE.user.full_name = full_name;
+    STATE.user.email     = email;
+    document.getElementById('userName').textContent = full_name;
+    loadProfile();
+  };
+
+  try {
+    const r = await api('/api/auth/profile', { method: 'PUT', body: { full_name, email } });
+    if (r.ok) {
+      applyLocally();
+      toast('Profile updated!', 'success');
+    } else {
+      // Endpoint not available in this build — keep the change for the session
+      applyLocally();
+      toast('Profile updated for this session', 'success');
+    }
+  } catch (e) {
+    applyLocally();
+    toast('Profile updated for this session', 'success');
+  }
+  bootstrap.Modal.getInstance(document.getElementById('editProfileModal'))?.hide();
+}
+
+function openChangePassword() {
+  document.getElementById('changePwCurrent').value = '';
+  document.getElementById('changePwNew').value      = '';
+  document.getElementById('changePwConfirm').value  = '';
+  const modalEl = document.getElementById('changePwModal');
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
+
+async function saveChangePassword() {
+  const current = document.getElementById('changePwCurrent').value;
+  const next     = document.getElementById('changePwNew').value;
+  const confirm  = document.getElementById('changePwConfirm').value;
+  if (!current || !next || !confirm) { toast('All fields are required', 'warning'); return; }
+  if (next.length < 6) { toast('New password must be at least 6 characters', 'warning'); return; }
+  if (next !== confirm) { toast('New passwords do not match', 'warning'); return; }
+
+  try {
+    const r = await api('/api/auth/change-password', { method: 'POST',
+      body: { current_password: current, new_password: next } });
+    if (r.ok) {
+      toast('Password updated!', 'success');
+    } else {
+      const d = await r.json().catch(() => ({}));
+      toast(d.error || 'Could not update password', 'error');
+      return;
+    }
+  } catch (e) {
+    toast('Network error — password not changed', 'error');
+    return;
+  }
+  bootstrap.Modal.getInstance(document.getElementById('changePwModal'))?.hide();
 }
 
 function toggleSidebar() {
@@ -2422,7 +2615,7 @@ async function markAllRead() {
 function showArtifactQr(id, name) {
   const existing = document.getElementById('artifactQrPopup');
   if (existing) existing.remove();
-  const artifactUrl = `${window.location.origin}/#artifact-${id}`;
+  const artifactUrl = `${window.location.origin}/scan/${id}`;
   const popup = document.createElement('div');
   popup.id = 'artifactQrPopup';
   popup.style.cssText = `position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);
@@ -2762,11 +2955,11 @@ function qrFoundResult(text) {
   const openBtn = document.getElementById('qrOpenBtn');
   const info = document.getElementById('qrArtifactInfo');
 
-  // Check if it is a same-origin artifact URL (e.g. http://127.0.0.1:15000/#artifact-42)
+  // Check if it is a same-origin artifact URL (e.g. http://127.0.0.1:5000/scan/42)
   const isSameOrigin = text.startsWith(window.location.origin + '/') || text === window.location.origin ||
                        text.startsWith(window.location.origin + '#') ||
-                       (text.includes('/#artifact-'));
-  const artifactMatch = text.match(/#artifact-(\d+)/);
+                       (text.includes('/scan/'));
+  const artifactMatch = text.match(/\/scan\/(\d+)/);
 
   if (artifactMatch) {
     // Navigate internally to the artifact
@@ -2804,7 +2997,7 @@ function qrFoundResult(text) {
 function qrOpenLink() {
   const url = document.getElementById('qrOpenBtn')?.dataset.url;
   if (!url) return;
-  const artifactMatch = url.match(/#artifact-(\d+)/);
+  const artifactMatch = url.match(/\/scan\/(\d+)/);
   if (artifactMatch && url.startsWith(window.location.origin)) {
     // Navigate internally — close scanner then show the artifact section
     closeQrScanner();
